@@ -1,0 +1,3991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Clases · Boceto</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+button { font: inherit; cursor: pointer; }
+input, select { font: inherit; }
+
+/* ---- Variables ---- */
+:root {
+  --fondo: #fafaf9;
+  --fondo-alt: #f3f2ef;
+  --fondo-panel: #ffffff;
+  --texto: #1a1a1a;
+  --texto-suave: #5a5a5a;
+  --texto-tenue: #8a8a8a;
+  --borde: #e5e4e0;
+  --borde-fuerte: #d4d3cf;
+
+  --acento: #0f766e;
+  --acento-hover: #0d5d57;
+  --acento-suave: rgba(15, 118, 110, 0.08);
+
+  --ok: #16a34a;
+  --ok-suave: rgba(22, 163, 74, 0.12);
+  --warn: #d97706;
+  --warn-suave: rgba(217, 119, 6, 0.14);
+  --info: #2563eb;
+  --info-suave: rgba(37, 99, 235, 0.12);
+  --bad: #dc2626;
+  --bad-suave: rgba(220, 38, 38, 0.12);
+
+  --fuente-sans: 'Inter', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+
+  --fs-sm: 0.85rem;
+  --fs-base: 0.95rem;
+  --fs-lg: 1.1rem;
+
+  --sp-xs: 0.4rem;
+  --sp-sm: 0.75rem;
+  --sp-md: 1.25rem;
+  --sp-lg: 2rem;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --t-rapido: 0.18s var(--ease);
+  --t-medio: 0.3s var(--ease);
+
+  --sombra-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
+  --sombra-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --sombra-lg: 0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+
+  --radio: 8px;
+  --radio-sm: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #141414;
+    --fondo-alt: #1c1c1c;
+    --fondo-panel: #1e1e1e;
+    --texto: #ededed;
+    --texto-suave: #b0b0b0;
+    --texto-tenue: #7a7a7a;
+    --borde: #2a2a2a;
+    --borde-fuerte: #3a3a3a;
+
+    --acento: #2dd4bf;
+    --acento-hover: #14b8a6;
+    --acento-suave: rgba(45, 212, 191, 0.12);
+
+    --ok-suave: rgba(34, 197, 94, 0.18);
+    --warn-suave: rgba(245, 158, 11, 0.2);
+    --info-suave: rgba(59, 130, 246, 0.2);
+    --bad-suave: rgba(239, 68, 68, 0.2);
+
+    --sombra-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.4);
+    --sombra-md: 0 4px 12px rgba(0,0,0,0.4);
+    --sombra-lg: 0 10px 30px rgba(0,0,0,0.5);
+  }
+}
+
+body {
+  font-family: var(--fuente-sans);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--texto);
+  background: var(--fondo);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  transition: background var(--t-medio), color var(--t-medio);
+}
+
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 3px; }
+
+::selection { background: var(--acento); color: #fff; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--texto-tenue); }
+
+/* ---- Layout principal ---- */
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  background: var(--fondo-alt);
+  border-right: 1px solid var(--borde);
+  padding: var(--sp-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  overflow-y: auto;
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--borde);
+}
+.sidebar-header .logo {
+  width: 32px; height: 32px;
+  background: var(--acento);
+  border-radius: var(--radio-sm);
+  display: grid; place-items: center;
+  color: #fff;
+  font-weight: 700;
+}
+.sidebar-header h1 {
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.sidebar-header .subtitulo {
+  font-size: 0.75rem;
+  color: var(--texto-tenue);
+  margin: 0;
+}
+
+.sidebar-section h2 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texto-tenue);
+  font-weight: 600;
+  margin: 0 0 var(--sp-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.escuela-item {
+  margin-bottom: var(--sp-sm);
+}
+.escuela-nombre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  transition: background var(--t-rapido);
+}
+.escuela-nombre:hover { background: var(--acento-suave); }
+.escuela-nombre .chev {
+  transition: transform var(--t-rapido);
+  font-size: 0.7rem;
+  color: var(--texto-tenue);
+}
+.escuela-item.colapsada .chev { transform: rotate(-90deg); }
+.escuela-item.colapsada .cursos-lista { display: none; }
+
+.cursos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.6rem;
+  border-left: 2px solid var(--borde);
+  margin-left: 0.7rem;
+  margin-top: 0.2rem;
+}
+.curso-item {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background var(--t-rapido), color var(--t-rapido);
+  position: relative;
+}
+.curso-item:hover { background: var(--acento-suave); color: var(--texto); }
+.curso-item.activo {
+  background: var(--acento);
+  color: #fff;
+  font-weight: 500;
+}
+.curso-item.activo:hover { background: var(--acento-hover); color: #fff; }
+.curso-item .borrar-mini {
+  opacity: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: opacity var(--t-rapido);
+}
+.curso-item:hover .borrar-mini,
+.curso-item.activo .borrar-mini { opacity: 0.7; }
+.curso-item .borrar-mini:hover { opacity: 1; }
+
+.btn-add {
+  background: transparent;
+  border: 1px dashed var(--borde-fuerte);
+  color: var(--texto-suave);
+  padding: 0.5rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.85rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all var(--t-rapido);
+}
+.btn-add:hover {
+  border-color: var(--acento);
+  color: var(--acento);
+  background: var(--acento-suave);
+}
+.btn-add-mini {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.95rem;
+  transition: all var(--t-rapido);
+}
+.btn-add-mini:hover { color: var(--acento); background: var(--acento-suave); }
+
+/* ---- Main ---- */
+.main {
+  padding: var(--sp-lg);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  color: var(--texto-suave);
+  gap: 0.8rem;
+}
+.empty-state .icono {
+  font-size: 3rem;
+  opacity: 0.4;
+}
+.empty-state h2 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--texto);
+}
+.empty-state p { margin: 0; max-width: 38ch; }
+
+/* ---- Header del curso ---- */
+.curso-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-md);
+  margin-bottom: var(--sp-lg);
+  flex-wrap: wrap;
+}
+.curso-header h2 {
+  font-size: 1.6rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.curso-header .meta {
+  color: var(--texto-suave);
+  font-size: var(--fs-sm);
+  margin-top: 0.2rem;
+}
+.curso-header .dias {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.dia-chip {
+  background: var(--acento-suave);
+  color: var(--acento);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.acciones-header {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ---- Botones ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo-panel);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: all var(--t-rapido);
+  white-space: nowrap;
+}
+.btn:hover {
+  border-color: var(--acento);
+  color: var(--acento);
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-sm);
+}
+.btn:active { transform: translateY(0); }
+.btn-primario {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+.btn-primario:hover {
+  background: var(--acento-hover);
+  border-color: var(--acento-hover);
+  color: #fff;
+}
+.btn-peligro:hover {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+/* ---- Tabs ---- */
+.tabs {
+  display: flex;
+  gap: 0.3rem;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: var(--sp-md);
+}
+.tab {
+  padding: 0.7rem 1.2rem;
+  background: transparent;
+  border: 0;
+  color: var(--texto-suave);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all var(--t-rapido);
+}
+.tab:hover { color: var(--texto); }
+.tab.activo {
+  color: var(--acento);
+  border-bottom-color: var(--acento);
+}
+
+/* ---- Resumen / stats ---- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-md);
+}
+.stat-card {
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.9rem 1.1rem;
+  transition: transform var(--t-rapido), box-shadow var(--t-rapido);
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-md);
+}
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  font-weight: 600;
+}
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+  letter-spacing: -0.02em;
+}
+.stat-detalle {
+  font-size: 0.75rem;
+  color: var(--texto-suave);
+  margin-top: 0.15rem;
+}
+
+/* ---- Tabla ---- */
+.tabla-wrap {
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: auto;
+  max-width: 100%;
+  box-shadow: var(--sombra-sm);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-sm);
+}
+th, td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--borde);
+  border-right: 1px solid var(--borde);
+  white-space: nowrap;
+}
+th:last-child, td:last-child { border-right: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+
+thead th {
+  background: var(--fondo-alt);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+thead th.col-alumno {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 180px;
+}
+td.col-alumno {
+  position: sticky;
+  left: 0;
+  background: var(--fondo-panel);
+  z-index: 1;
+  font-weight: 500;
+  border-right: 1px solid var(--borde);
+  min-width: 180px;
+}
+tbody tr:nth-child(even) td.col-alumno { background: var(--fondo-alt); }
+tbody tr:nth-child(even) td { background: var(--fondo-alt); }
+tbody tr:hover td { background: var(--acento-suave); }
+tbody tr:hover td.col-alumno { background: var(--acento-suave); }
+
+th.col-resumen, td.col-resumen {
+  background: var(--fondo-alt);
+  font-weight: 600;
+  min-width: 90px;
+  text-align: center;
+}
+tbody tr:nth-child(even) td.col-resumen { background: var(--borde); }
+tbody tr:hover td.col-resumen { background: var(--acento-suave); }
+
+th.col-fecha {
+  text-align: center;
+  min-width: 56px;
+  cursor: help;
+}
+th.col-fecha .fecha-dia {
+  font-size: 1rem;
+  display: block;
+  color: var(--texto);
+}
+th.col-fecha .fecha-mes {
+  font-size: 0.65rem;
+  color: var(--texto-tenue);
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+td.celda-asistencia {
+  text-align: center;
+  padding: 0.3rem;
+  cursor: pointer;
+  transition: background var(--t-rapido);
+  min-width: 56px;
+}
+.estado-chip {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.8rem;
+  transition: transform var(--t-rapido);
+}
+.estado-chip:hover { transform: scale(1.1); }
+.estado-vacio { color: var(--texto-tenue); }
+.estado-vacio:hover { color: var(--acento); }
+.estado-P { background: var(--ok-suave); color: var(--ok); }
+.estado-A { background: var(--bad-suave); color: var(--bad); }
+.estado-J { background: var(--info-suave); color: var(--info); }
+.estado-T { background: var(--warn-suave); color: var(--warn); }
+
+@media (prefers-color-scheme: dark) {
+  .estado-P { color: #4ade80; }
+  .estado-A { color: #f87171; }
+  .estado-J { color: #60a5fa; }
+  .estado-T { color: #fbbf24; }
+}
+
+/* ---- Notas ---- */
+td.celda-nota {
+  text-align: center;
+  padding: 0.25rem;
+  cursor: pointer;
+  min-width: 80px;
+}
+.celda-nota input {
+  width: 100%;
+  max-width: 60px;
+  padding: 0.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio-sm);
+  background: transparent;
+  text-align: center;
+  font-weight: 600;
+  color: inherit;
+  transition: all var(--t-rapido);
+}
+.celda-nota input:hover { border-color: var(--borde-fuerte); }
+.celda-nota input:focus { border-color: var(--acento); background: var(--fondo-panel); }
+
+.nota-Regular { background: var(--bad-suave); color: var(--bad); }
+.nota-Bien { background: var(--warn-suave); color: var(--warn); }
+.nota-MuyBien { background: var(--info-suave); color: var(--info); }
+.nota-Excelente { background: var(--ok-suave); color: var(--ok); }
+
+@media (prefers-color-scheme: dark) {
+  .nota-Regular { color: #f87171; }
+  .nota-Bien { color: #fbbf24; }
+  .nota-MuyBien { color: #60a5fa; }
+  .nota-Excelente { color: #4ade80; }
+}
+
+th.col-trabajo {
+  text-align: center;
+  min-width: 90px;
+}
+th.col-trabajo .trabajo-tit {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--texto);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 0.1rem;
+}
+th.col-trabajo button.borrar-trabajo {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  font-size: 0.7rem;
+  padding: 0;
+  margin-top: 0.15rem;
+}
+th.col-trabajo button.borrar-trabajo:hover { color: var(--bad); }
+
+/* ---- Tooltip ---- */
+[data-tip] { position: relative; }
+[data-tip]::before, [data-tip]::after {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--t-rapido), transform var(--t-rapido);
+}
+[data-tip]::before {
+  content: attr(data-tip);
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  background: var(--texto);
+  color: var(--fondo);
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: var(--sombra-md);
+  max-width: 260px;
+  white-space: normal;
+  width: max-content;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+[data-tip]::after {
+  content: "";
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--texto);
+  z-index: 100;
+}
+[data-tip]:hover::before, [data-tip]:hover::after,
+[data-tip]:focus-visible::before, [data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+[data-tip]:hover::after, [data-tip]:focus-visible::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Badges de estado del alumno ---- */
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  cursor: help;
+}
+.badge-libre {
+  background: var(--bad);
+  color: #fff;
+  animation: pulse-bad 2s var(--ease) infinite;
+}
+.badge-peligro {
+  background: var(--warn);
+  color: #fff;
+}
+.badge-incentivo {
+  background: transparent;
+  border: 0;
+  color: var(--info);
+  padding: 0;
+  margin-left: 0.3rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform var(--t-rapido);
+  opacity: 0.75;
+}
+.badge-incentivo:hover { opacity: 1; transform: scale(1.15); }
+.badge-incentivo.vacio { color: var(--texto-tenue); opacity: 0; }
+tr:hover .badge-incentivo.vacio { opacity: 0.5; }
+.badge-incentivo.vacio:hover { opacity: 1; color: var(--acento); }
+
+@keyframes pulse-bad {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+
+tr.fila-libre td.col-alumno {
+  border-left: 3px solid var(--bad);
+}
+tr.fila-peligro td.col-alumno {
+  border-left: 3px solid var(--warn);
+}
+
+/* ---- Alerta informativa ---- */
+.alerta-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-sm);
+  border-left: 3px solid;
+}
+.alerta-warn {
+  background: var(--warn-suave);
+  color: var(--warn);
+  border-left-color: var(--warn);
+}
+.alerta-bad {
+  background: var(--bad-suave);
+  color: var(--bad);
+  border-left-color: var(--bad);
+}
+.alerta-info strong { color: inherit; }
+
+/* ---- Celda nota valorativa (sin input visible) ---- */
+.celda-nota-valorativa {
+  text-align: center;
+  padding: 0.25rem;
+  cursor: pointer;
+  min-width: 80px;
+  position: relative;
+  transition: background var(--t-rapido);
+}
+.celda-nota-valorativa:hover { filter: brightness(1.05); }
+.celda-nota-valorativa .valor-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 28px;
+  padding: 0 0.5rem;
+  border-radius: var(--radio-sm);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+}
+.celda-nota-valorativa.editando { background: var(--fondo-panel); }
+.celda-nota-valorativa input.editor-nota {
+  width: 56px;
+  padding: 0.25rem;
+  border: 1px solid var(--acento);
+  border-radius: var(--radio-sm);
+  background: var(--fondo);
+  color: var(--texto);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* ---- Modal grande (rúbrica, incentivo) ---- */
+.modal.modal-grande { max-width: 580px; }
+
+.criterio-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 36px;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.criterio-row input[type="text"] {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+}
+.criterio-row input[type="number"] {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.criterio-row .peso-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--texto-tenue);
+}
+.criterio-row button.borrar-criterio {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  font-size: 1.1rem;
+  padding: 0.3rem;
+  border-radius: var(--radio-sm);
+  transition: all var(--t-rapido);
+}
+.criterio-row button.borrar-criterio:hover { color: var(--bad); background: var(--bad-suave); }
+
+.rubrica-info {
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radio-sm);
+  margin-bottom: 0.8rem;
+  border-left: 2px solid var(--acento);
+}
+
+.modal textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-base);
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color var(--t-rapido);
+}
+.modal textarea:focus { border-color: var(--acento); }
+
+/* Indicador de rúbrica en header de trabajo */
+.indicador-rubrica {
+  display: inline-block;
+  font-size: 0.6rem;
+  background: var(--acento-suave);
+  color: var(--acento);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  margin-left: 0.3rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* Acciones del header de trabajo */
+th.col-trabajo .acciones-trabajo {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+  margin-top: 0.2rem;
+}
+th.col-trabajo .acciones-trabajo button {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  font-size: 0.65rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all var(--t-rapido);
+}
+th.col-trabajo .acciones-trabajo button:hover { color: var(--acento); }
+th.col-trabajo .acciones-trabajo button.borrar:hover { color: var(--bad); }
+
+/* ---- Día especial (feriado/excursión) ---- */
+th.col-fecha.dia-especial {
+  background: linear-gradient(135deg, var(--info-suave) 0%, var(--acento-suave) 100%);
+  cursor: help;
+  position: relative;
+}
+th.col-fecha.dia-especial .fecha-dia { color: var(--info); }
+th.col-fecha.dia-especial .fecha-mes { color: var(--info); opacity: 0.85; }
+th.col-fecha.dia-especial::after {
+  content: "★";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.7rem;
+  color: var(--info);
+}
+td.celda-asistencia.dia-especial {
+  background: var(--info-suave) !important;
+  cursor: default;
+  pointer-events: none;
+}
+td.celda-asistencia.dia-especial .estado-chip {
+  background: transparent;
+  color: var(--info);
+}
+tr:hover td.celda-asistencia.dia-especial { background: var(--info-suave) !important; }
+tbody tr:nth-child(even) td.celda-asistencia.dia-especial { background: var(--info-suave) !important; }
+
+/* Editor de motivo de día especial */
+.motivo-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-base);
+}
+.motivo-input:focus { border-color: var(--acento); }
+
+/* ---- Toolbar de filtros y ordenamiento ---- */
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: var(--sp-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar-grupo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  font-size: var(--fs-sm);
+  transition: border-color var(--t-rapido);
+}
+.toolbar-grupo:hover { border-color: var(--borde-fuerte); }
+.toolbar-grupo label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  font-weight: 600;
+}
+.toolbar-grupo select {
+  border: 0;
+  background: transparent;
+  color: var(--texto);
+  font-size: var(--fs-sm);
+  padding: 0.3rem 0.2rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.toolbar-grupo select:focus { outline: none; }
+.toolbar-info {
+  font-size: 0.78rem;
+  color: var(--texto-tenue);
+  margin-left: auto;
+}
+.toolbar-info .badge-filtro {
+  display: inline-block;
+  background: var(--acento-suave);
+  color: var(--acento);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  margin-left: 0.3rem;
+}
+.btn-limpiar-filtros {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radio-sm);
+  transition: all var(--t-rapido);
+}
+.btn-limpiar-filtros:hover { color: var(--bad); background: var(--bad-suave); }
+
+/* Botón día especial en toolbar */
+.btn-dia-especial {
+  background: var(--info-suave);
+  color: var(--info);
+  border: 1px solid transparent;
+}
+.btn-dia-especial:hover {
+  border-color: var(--info);
+  color: var(--info);
+  background: var(--info-suave);
+}
+
+/* ---- Columna ancha de mensaje (al lado del promedio) ---- */
+th.col-mensaje, td.col-mensaje {
+  min-width: 220px;
+  max-width: 320px;
+  background: var(--fondo-alt);
+  white-space: normal;
+  vertical-align: top;
+  padding: 0.55rem 0.7rem;
+}
+tbody tr:nth-child(even) td.col-mensaje { background: var(--borde); }
+tbody tr:hover td.col-mensaje { background: var(--acento-suave); }
+
+.celda-mensaje-content {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--texto);
+  display: block;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  min-height: 22px;
+  border-radius: var(--radio-sm);
+  transition: color var(--t-rapido);
+  word-break: break-word;
+}
+.celda-mensaje-content:hover { color: var(--acento); }
+.celda-mensaje-content.vacio {
+  color: var(--texto-tenue);
+  font-style: italic;
+  opacity: 0.7;
+}
+.celda-mensaje-content.vacio::before {
+  content: "+ ";
+  font-style: normal;
+  font-weight: 600;
+}
+.celda-mensaje-content.vacio:hover { opacity: 1; color: var(--acento); }
+
+/* Empty state de filtro */
+.empty-filtro {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--texto-suave);
+  font-size: var(--fs-sm);
+}
+
+/* Modal día especial - dos opciones (marcar / desmarcar) */
+.modal-opciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
+  margin-top: 0.5rem;
+}
+.opcion-card {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  transition: all var(--t-rapido);
+}
+.opcion-card:hover {
+  border-color: var(--acento);
+  background: var(--acento-suave);
+}
+.opcion-card h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.92rem;
+}
+.opcion-card p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
+
+/* ---- Botón de mail junto al nombre ---- */
+.btn-mail {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.95rem;
+  line-height: 1;
+  margin-left: 0.3rem;
+  opacity: 0.35;
+  transition: all var(--t-rapido);
+  vertical-align: middle;
+}
+tr:hover .btn-mail { opacity: 1; }
+.btn-mail.tiene-mail { opacity: 0.75; color: var(--acento); }
+tr:hover .btn-mail.tiene-mail { opacity: 1; }
+.btn-mail:hover {
+  color: var(--acento);
+  background: var(--acento-suave);
+  opacity: 1 !important;
+}
+
+/* ---- Menú de mail (dropdown) ---- */
+.mail-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: none;
+}
+.mail-menu-overlay.activo { display: block; }
+.mail-menu {
+  position: absolute;
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-lg);
+  min-width: 280px;
+  max-width: 340px;
+  padding: 0.35rem;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: top left;
+  transition: opacity var(--t-rapido), transform var(--t-rapido);
+  pointer-events: none;
+}
+.mail-menu-overlay.activo .mail-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.mail-menu-header {
+  padding: 0.5rem 0.6rem 0.4rem;
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.mail-menu-header strong {
+  color: var(--texto);
+  font-size: 0.82rem;
+  display: block;
+  margin-bottom: 0.1rem;
+}
+.mail-menu-header .mail-direccion {
+  font-family: var(--fuente-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--acento);
+  word-break: break-all;
+}
+.mail-menu-header button.editar-mail {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.2rem 0.4rem;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: all var(--t-rapido);
+}
+.mail-menu-header button.editar-mail:hover { color: var(--acento); background: var(--acento-suave); }
+
+.mail-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--texto);
+  font-size: 0.85rem;
+  text-align: left;
+  border-radius: var(--radio-sm);
+  transition: background var(--t-rapido);
+  cursor: pointer;
+}
+.mail-menu-item:hover { background: var(--acento-suave); }
+.mail-menu-item .icono {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.mail-menu-item .label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.mail-menu-item .descripcion {
+  font-size: 0.72rem;
+  color: var(--texto-tenue);
+  margin-top: 0.1rem;
+  line-height: 1.3;
+}
+.mail-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mail-menu-item.disabled:hover { background: transparent; }
+
+.mail-menu-separator {
+  height: 1px;
+  background: var(--borde);
+  margin: 0.3rem 0;
+}
+
+/* ---- Sección de cuenta Google en sidebar ---- */
+.cuenta-google {
+  padding: 0.6rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  background: var(--fondo-panel);
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+}
+.cuenta-google.conectada {
+  border-color: var(--ok);
+  background: var(--ok-suave);
+}
+.cuenta-google .estado-cuenta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: var(--texto);
+}
+.cuenta-google .estado-cuenta .punto {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--texto-tenue);
+  flex-shrink: 0;
+}
+.cuenta-google.conectada .estado-cuenta .punto {
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--ok-suave);
+}
+.cuenta-google .email-google {
+  font-family: var(--fuente-mono, monospace);
+  color: var(--texto-suave);
+  font-size: 0.68rem;
+  word-break: break-all;
+  margin-bottom: 0.5rem;
+}
+.cuenta-google button {
+  width: 100%;
+  padding: 0.4rem;
+  font-size: 0.72rem;
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  transition: all var(--t-rapido);
+}
+.cuenta-google button:hover {
+  border-color: var(--acento);
+  color: var(--acento);
+}
+.cuenta-google button + button { margin-top: 0.3rem; }
+
+/* ---- Acciones de fila ---- */
+.acciones-alumno {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity var(--t-rapido);
+}
+tr:hover .acciones-alumno { opacity: 1; }
+.acciones-alumno button {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.15rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.acciones-alumno button:hover { color: var(--bad); background: var(--bad-suave); }
+
+/* ---- Fila agregar alumno ---- */
+.agregar-alumno-row td {
+  background: var(--fondo-alt);
+  padding: 0.4rem 0.7rem;
+}
+.agregar-alumno-row input {
+  width: 100%;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo-panel);
+  color: var(--texto);
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+}
+.agregar-alumno-row input:focus { border-color: var(--acento); }
+
+/* ---- Modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-medio);
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.activo {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal {
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--sombra-lg);
+  transform: translateY(20px) scale(0.98);
+  transition: transform var(--t-medio);
+}
+.modal-overlay.activo .modal { transform: translateY(0) scale(1); }
+.modal h3 { margin: 0 0 1rem; font-size: 1.15rem; }
+.modal label {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--texto-suave);
+  margin-bottom: 0.3rem;
+  margin-top: 0.8rem;
+  font-weight: 500;
+}
+.modal label:first-of-type { margin-top: 0; }
+.modal input[type="text"], .modal input[type="number"] {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-base);
+  transition: border-color var(--t-rapido);
+}
+.modal input:focus { border-color: var(--acento); }
+.dias-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.dia-toggle {
+  flex: 1 1 auto;
+  text-align: center;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio-sm);
+  background: var(--fondo);
+  color: var(--texto-suave);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  user-select: none;
+  transition: all var(--t-rapido);
+}
+.dia-toggle:hover { border-color: var(--acento); color: var(--acento); }
+.dia-toggle.activo {
+  background: var(--acento);
+  color: #fff;
+  border-color: var(--acento);
+}
+.modal-rango {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* ---- Año selector ---- */
+.year-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.year-picker select {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo-panel);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+}
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--texto);
+  color: var(--fondo);
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-lg);
+  font-size: var(--fs-sm);
+  z-index: 2000;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--t-medio), transform var(--t-medio);
+  pointer-events: none;
+}
+.toast.visible { opacity: 1; transform: translateY(0); }
+
+/* ---- Responsive ---- */
+@media (max-width: 800px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: relative;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .main { padding: var(--sp-md) var(--sp-sm); }
+  .curso-header h2 { font-size: 1.3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">📚</div>
+      <div>
+        <h1>Gestor de Clases</h1>
+        <p class="subtitulo">Boceto · v0.1</p>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h2>
+        <span>Escuelas y cursos</span>
+      </h2>
+      <div id="lista-escuelas"></div>
+      <button class="btn-add" onclick="abrirModalEscuela()" data-tip="Crear una escuela nueva">
+        + Nueva escuela
+      </button>
+    </div>
+
+    <div style="margin-top:auto; padding-top:var(--sp-md); border-top:1px solid var(--borde); font-size:0.72rem; color:var(--texto-tenue); line-height:1.5;">
+      <div id="cuenta-google-container"></div>
+
+      <div style="margin-top:0.6rem;">
+        <button class="btn-add-mini" onclick="exportarTodo()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%;" data-tip="Descargar copia de seguridad en formato JSON">⬇ Backup JSON</button>
+        <button class="btn-add-mini" onclick="document.getElementById('import-input').click()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%; margin-top:0.3rem;" data-tip="Restaurar desde un archivo JSON exportado previamente">⬆ Importar JSON</button>
+        <input type="file" id="import-input" accept=".json" style="display:none" onchange="importarTodo(event)">
+      </div>
+
+      <div style="margin-top:0.6rem; text-align:center; opacity:0.8;">
+        Datos en este navegador
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN ========== -->
+  <main class="main" id="main"></main>
+</div>
+
+<!-- Modal Escuela -->
+<div class="modal-overlay" id="modal-escuela">
+  <div class="modal">
+    <h3>Nueva escuela</h3>
+    <label>Nombre de la escuela</label>
+    <input type="text" id="input-escuela-nombre" placeholder="Ej: Escuela N°4 San Martín" autocomplete="off">
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarEscuela()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Curso -->
+<div class="modal-overlay" id="modal-curso">
+  <div class="modal">
+    <h3>Nuevo curso</h3>
+    <label>Nombre del curso</label>
+    <input type="text" id="input-curso-nombre" placeholder="Ej: 3°B Matemática" autocomplete="off">
+
+    <label>Días de la semana en que se dicta</label>
+    <div class="dias-selector" id="dias-selector">
+      <span class="dia-toggle" data-dia="1">Lun</span>
+      <span class="dia-toggle" data-dia="2">Mar</span>
+      <span class="dia-toggle" data-dia="3">Mié</span>
+      <span class="dia-toggle" data-dia="4">Jue</span>
+      <span class="dia-toggle" data-dia="5">Vie</span>
+      <span class="dia-toggle" data-dia="6">Sáb</span>
+    </div>
+
+    <div class="modal-rango">
+      <div>
+        <label>Inicio del ciclo</label>
+        <input type="text" id="input-curso-anio-inicio" value="" placeholder="Ej: 2026-03-01">
+      </div>
+      <div>
+        <label>Fin del ciclo</label>
+        <input type="text" id="input-curso-anio-fin" value="" placeholder="Ej: 2026-12-15">
+      </div>
+    </div>
+
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarCurso()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Día Especial -->
+<div class="modal-overlay" id="modal-dia-especial">
+  <div class="modal">
+    <h3 id="dia-especial-titulo">Marcar día como especial</h3>
+    <p style="margin:0 0 0.8rem; font-size:0.82rem; color:var(--texto-suave);" id="dia-especial-fecha"></p>
+
+    <div class="rubrica-info" style="background:var(--info-suave); color:var(--info); border-left-color:var(--info);">
+      Los días especiales (feriados, excursiones, suspensiones) no cuentan para el cálculo del % de asistencia.
+    </div>
+
+    <label>Motivo del día especial</label>
+    <input type="text" class="motivo-input" id="input-motivo-especial" placeholder="Ej: Feriado nacional, Excursión al museo, Paro docente" autocomplete="off">
+
+    <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="desmarcarDiaEspecial()" id="btn-desmarcar-especial" style="margin-right:auto;">Desmarcar día especial</button>
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarDiaEspecial()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Email del alumno -->
+<div class="modal-overlay" id="modal-email">
+  <div class="modal">
+    <h3 id="email-titulo">Email del alumno</h3>
+    <p style="margin:0 0 0.6rem; font-size:0.82rem; color:var(--texto-suave);">
+      Sirve para enviar mails rápidos con plantillas predefinidas. No se valida formato — usá el que el alumno te pasó.
+    </p>
+    <label>Dirección de email</label>
+    <input type="email" id="input-email-alumno" placeholder="alumno@ejemplo.com" autocomplete="off">
+    <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="borrarEmailAlumno()" id="btn-borrar-email" style="margin-right:auto; display:none;">Eliminar email</button>
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarEmailAlumno()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Mensaje libre por mail -->
+<div class="modal-overlay" id="modal-mail-libre">
+  <div class="modal modal-grande">
+    <h3 id="mail-libre-titulo">Mensaje libre</h3>
+    <p style="margin:0 0 0.8rem; font-size:0.82rem; color:var(--texto-suave);" id="mail-libre-sub"></p>
+    <label>Asunto</label>
+    <input type="text" id="input-mail-asunto" placeholder="Asunto del mail" autocomplete="off">
+    <label>Mensaje</label>
+    <textarea id="input-mail-cuerpo" placeholder="Escribí el cuerpo del mail acá..." style="min-height:140px;"></textarea>
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="abrirMailDesdeModal()">Abrir cliente de mail</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Google Drive (configuración + estado) -->
+<div class="modal-overlay" id="modal-google">
+  <div class="modal modal-grande">
+    <h3>Sincronización con Google Drive</h3>
+    <div id="google-contenido"></div>
+  </div>
+</div>
+
+<!-- Modal Trabajo -->
+<div class="modal-overlay" id="modal-trabajo">
+  <div class="modal">
+    <h3>Nuevo trabajo</h3>
+    <label>Título del trabajo</label>
+    <input type="text" id="input-trabajo-nombre" placeholder="Ej: Examen Unidad 1" autocomplete="off">
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarTrabajo()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Rúbrica -->
+<div class="modal-overlay" id="modal-rubrica">
+  <div class="modal modal-grande">
+    <h3 id="rubrica-titulo">Rúbrica del trabajo</h3>
+    <div class="rubrica-info">
+      Definí criterios de evaluación. La nota final del trabajo será el promedio ponderado de los criterios. Si no agregás ninguno, el trabajo se evalúa con una sola nota.
+    </div>
+    <label>Criterios de evaluación</label>
+    <div id="criterios-lista"></div>
+    <button class="btn-add" onclick="agregarCriterio()" style="margin-top:0.5rem;">+ Agregar criterio</button>
+    <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="quitarRubrica()" id="btn-quitar-rubrica" style="margin-right:auto;">Quitar rúbrica</button>
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarRubrica()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Incentivo -->
+<div class="modal-overlay" id="modal-incentivo">
+  <div class="modal">
+    <h3 id="incentivo-titulo">Mensaje para el alumno</h3>
+    <p style="margin:0 0 0.6rem; font-size:0.82rem; color:var(--texto-suave);">
+      Escribí un mensaje personalizado (felicitación, recordatorio, sugerencia). Se incluirá al exportar a Excel.
+    </p>
+    <textarea id="input-incentivo" placeholder="Ej: ¡Excelente progreso este bimestre! Sigue así con la participación en clase."></textarea>
+    <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="borrarIncentivo()" id="btn-borrar-incentivo" style="margin-right:auto;">Eliminar mensaje</button>
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="guardarIncentivo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar nota por criterios -->
+<div class="modal-overlay" id="modal-notas-criterios">
+  <div class="modal modal-grande">
+    <h3 id="notas-criterios-titulo">Notas por criterio</h3>
+    <p style="margin:0 0 0.8rem; font-size:0.82rem; color:var(--texto-suave);" id="notas-criterios-sub"></p>
+    <div id="notas-criterios-lista"></div>
+    <div style="margin-top:1rem; padding:0.7rem; background:var(--fondo-alt); border-radius:var(--radio-sm); display:flex; justify-content:space-between; align-items:center;">
+      <strong style="font-size:0.85rem;">Nota final del trabajo</strong>
+      <span id="nota-final-display" style="font-weight:700; font-size:1.1rem;">—</span>
+    </div>
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cerrar</button>
+      <button class="btn btn-primario" onclick="guardarNotasCriterios()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Menú flotante de opciones de mail -->
+<div class="mail-menu-overlay" id="mail-menu-overlay" onclick="cerrarMenuMail(event)">
+  <div class="mail-menu" id="mail-menu" onclick="event.stopPropagation()"></div>
+</div>
+
+<script>
+// =========================================================
+// ESTADO Y PERSISTENCIA
+// =========================================================
+const STORAGE_KEY = 'gestor-clases-v1';
+const ESTADOS_ASIST = ['', 'P', 'A', 'J', 'T'];
+const ESTADO_LABEL = {
+  'P': 'Presente',
+  'A': 'Ausente',
+  'J': 'Justificado',
+  'T': 'Tarde',
+  '': 'Sin registrar'
+};
+const DIAS_NOMBRES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MESES_NOMBRES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+let estado = {
+  escuelas: [],
+  cursoActivoId: null,
+  tabActiva: 'asistencias',
+  ordenAsist: 'manual',     // manual | az | za | asistDesc | asistAsc | estadoLibres
+  filtroAsist: 'todos',     // todos | libres | regulares
+  ordenNotas: 'manual',     // manual | az | za | promDesc | promAsc | estadoPeligro
+  filtroNotas: 'todos'      // todos | aprobados | desaprobados | peligro | conMensaje | sinMensaje
+};
+let modoEdicion = { tipo: null, escuelaId: null };
+
+function cargarEstado() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const cargado = JSON.parse(raw);
+      estado = { ...estado, ...cargado };
+    }
+  } catch (e) {
+    console.error('Error al cargar estado', e);
+  }
+}
+
+function guardarEstado() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+  } catch (e) {
+    toast('Error al guardar: ' + e.message);
+  }
+  // Si Google Drive está conectado, programar subida con debounce
+  if (typeof programarSincroDrive === 'function') {
+    programarSincroDrive();
+  }
+}
+
+function uid() { return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+function obtenerCursoActivo() {
+  for (const esc of estado.escuelas) {
+    const c = esc.cursos.find(c => c.id === estado.cursoActivoId);
+    if (c) return { escuela: esc, curso: c };
+  }
+  return null;
+}
+
+// =========================================================
+// LÓGICA DE FECHAS
+// =========================================================
+function generarFechasClase(curso) {
+  // Devuelve array de Date para todas las clases del rango,
+  // solo en los días de la semana seleccionados.
+  const inicio = new Date(curso.inicio + 'T00:00:00');
+  const fin = new Date(curso.fin + 'T00:00:00');
+  const dias = new Set(curso.dias);
+  const out = [];
+  const cur = new Date(inicio);
+  while (cur <= fin) {
+    if (dias.has(cur.getDay())) out.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+function fechaKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function fechaCorta(d) {
+  return d.getDate() + ' ' + MESES_NOMBRES[d.getMonth()];
+}
+
+function fechaCompleta(d) {
+  return DIAS_NOMBRES[d.getDay()] + ' ' + d.getDate() + ' ' + MESES_NOMBRES[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Devuelve el motivo si la fecha es día especial, o null si no lo es.
+function diaEspecialMotivo(curso, fechaKey_) {
+  return curso.diasEspeciales?.[fechaKey_] || null;
+}
+
+// Umbrales de alerta
+const UMBRAL_LIBRE = 75;        // % mínimo de asistencia
+const UMBRAL_PELIGRO_TRABAJOS = 3; // trabajos sin entregar antes de alertar
+
+// =========================================================
+// LÓGICA DE NOTAS
+// =========================================================
+function categoriaDeNota(n) {
+  if (n === '' || n === null || n === undefined || isNaN(n)) return null;
+  const num = Number(n);
+  if (num < 6) return { clase: 'Regular', label: 'Regular', sigla: 'R' };
+  if (num < 8) return { clase: 'Bien', label: 'Bien', sigla: 'B' };
+  if (num < 10) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
+  if (num === 10) return { clase: 'Excelente', label: 'Excelente', sigla: 'E' };
+  return null;
+}
+
+// Calcula la nota final de un trabajo para un alumno
+// Si el trabajo tiene rúbrica: promedio ponderado de criterios
+// Si no: la nota directa
+function calcularNotaTrabajo(alumno, trabajo) {
+  if (!alumno.notas) return null;
+  if (trabajo.criterios && trabajo.criterios.length > 0) {
+    // Promedio ponderado por criterios
+    const notasCrit = alumno.notas[trabajo.id];
+    if (!notasCrit || typeof notasCrit !== 'object') return null;
+    let sumaPesos = 0, sumaPond = 0;
+    let algunaCargada = false;
+    for (const c of trabajo.criterios) {
+      const v = notasCrit[c.id];
+      const peso = Number(c.peso) || 1;
+      if (v !== undefined && v !== null && v !== '' && !isNaN(v)) {
+        sumaPond += Number(v) * peso;
+        sumaPesos += peso;
+        algunaCargada = true;
+      }
+    }
+    if (!algunaCargada || sumaPesos === 0) return null;
+    return sumaPond / sumaPesos;
+  }
+  // Sin rúbrica: nota directa
+  const v = alumno.notas[trabajo.id];
+  if (v === undefined || v === null || v === '' || isNaN(v)) return null;
+  return Number(v);
+}
+
+// ¿El alumno tiene nota cargada para este trabajo?
+function tieneNotaCargada(alumno, trabajo) {
+  return calcularNotaTrabajo(alumno, trabajo) !== null;
+}
+
+// =========================================================
+// RENDER SIDEBAR
+// =========================================================
+function renderSidebar() {
+  const cont = document.getElementById('lista-escuelas');
+  if (estado.escuelas.length === 0) {
+    cont.innerHTML = '<p style="font-size:0.8rem; color:var(--texto-tenue); margin:0.4rem 0 0.8rem; line-height:1.5;">Todavía no hay escuelas creadas. Empezá creando una abajo.</p>';
+    return;
+  }
+  cont.innerHTML = estado.escuelas.map(esc => `
+    <div class="escuela-item" data-id="${esc.id}">
+      <div class="escuela-nombre" onclick="toggleEscuela('${esc.id}')">
+        <span>${escapeHtml(esc.nombre)}</span>
+        <span style="display:flex; gap:0.3rem; align-items:center;">
+          <button class="btn-add-mini" onclick="event.stopPropagation(); abrirModalCurso('${esc.id}')" data-tip="Agregar un curso a esta escuela">+</button>
+          <button class="btn-add-mini" onclick="event.stopPropagation(); borrarEscuela('${esc.id}')" data-tip="Eliminar la escuela completa">×</button>
+          <span class="chev">▾</span>
+        </span>
+      </div>
+      <ul class="cursos-lista">
+        ${esc.cursos.map(c => `
+          <li class="curso-item ${c.id === estado.cursoActivoId ? 'activo' : ''}" onclick="seleccionarCurso('${c.id}')">
+            <span>${escapeHtml(c.nombre)}</span>
+            <button class="borrar-mini" onclick="event.stopPropagation(); borrarCurso('${c.id}')" data-tip="Eliminar curso">×</button>
+          </li>
+        `).join('') || '<li style="font-size:0.75rem; color:var(--texto-tenue); padding:0.3rem 0.6rem;">Sin cursos</li>'}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function toggleEscuela(id) {
+  const el = document.querySelector(`.escuela-item[data-id="${id}"]`);
+  if (el) el.classList.toggle('colapsada');
+}
+
+// =========================================================
+// RENDER MAIN
+// =========================================================
+function renderMain() {
+  const main = document.getElementById('main');
+  const activo = obtenerCursoActivo();
+
+  if (!activo) {
+    main.innerHTML = `
+      <div class="empty-state">
+        <div class="icono">📋</div>
+        <h2>Bienvenido al gestor de clases</h2>
+        <p>Empezá creando una <strong>escuela</strong> desde el panel izquierdo, después agregá un <strong>curso</strong> con los días en que lo dictás, y ya vas a poder cargar alumnos, asistencias y notas.</p>
+        <button class="btn btn-primario" onclick="abrirModalEscuela()" style="margin-top:0.5rem;">+ Crear primera escuela</button>
+      </div>
+    `;
+    return;
+  }
+
+  const { escuela, curso } = activo;
+  const fechas = generarFechasClase(curso);
+  const diasNombres = curso.dias.map(d => DIAS_NOMBRES[d]).join(', ');
+
+  main.innerHTML = `
+    <div class="curso-header">
+      <div>
+        <h2>${escapeHtml(curso.nombre)}</h2>
+        <p class="meta">${escapeHtml(escuela.nombre)} · ${fechas.length} clases programadas (${curso.inicio} → ${curso.fin})</p>
+        <div class="dias">${curso.dias.map(d => `<span class="dia-chip">${DIAS_NOMBRES[d]}</span>`).join('')}</div>
+      </div>
+      <div class="acciones-header">
+        <button class="btn" onclick="exportarExcel()" data-tip="Descargar todo el curso en un archivo .xlsx con dos hojas (Asistencias y Notas)">
+          ⬇ Descargar Excel
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab ${estado.tabActiva === 'asistencias' ? 'activo' : ''}" onclick="cambiarTab('asistencias')">Asistencias</button>
+      <button class="tab ${estado.tabActiva === 'notas' ? 'activo' : ''}" onclick="cambiarTab('notas')">Notas</button>
+    </div>
+
+    <div id="tab-contenido"></div>
+  `;
+
+  if (estado.tabActiva === 'asistencias') renderAsistencias(curso, fechas);
+  else renderNotas(curso);
+}
+
+function renderAsistencias(curso, fechas) {
+  const cont = document.getElementById('tab-contenido');
+
+  if (curso.alumnos.length === 0) {
+    cont.innerHTML = renderTablaAsistencias(curso, fechas);
+  } else {
+    const libres = curso.alumnos.filter(al => calcularResumenAlumno(al, fechas, curso).libre);
+    const alertaLibres = libres.length > 0
+      ? `<div class="alerta-bad"><span style="font-size:1.2rem;">⚠</span> <span><strong>${libres.length} ${libres.length === 1 ? 'alumno está libre' : 'alumnos están libres'}</strong> por asistencia menor al ${UMBRAL_LIBRE}%: ${libres.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
+      : '';
+    cont.innerHTML = renderStatsAsistencias(curso, fechas) + alertaLibres + renderTablaAsistencias(curso, fechas);
+  }
+}
+
+function renderStatsAsistencias(curso, fechas) {
+  const especiales = Object.keys(curso.diasEspeciales || {}).length;
+  const totalClases = fechas.length - especiales;
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const clasesPasadas = fechas.filter(f => f <= hoy && !diaEspecialMotivo(curso, fechaKey(f))).length;
+  const totalAlumnos = curso.alumnos.length;
+
+  let totalP = 0, totalA = 0, totalJ = 0, totalT = 0, totalRegistros = 0;
+  curso.alumnos.forEach(al => {
+    fechas.forEach(f => {
+      const k = fechaKey(f);
+      if (diaEspecialMotivo(curso, k)) return;
+      const v = al.asistencias?.[k];
+      if (v) {
+        totalRegistros++;
+        if (v === 'P') totalP++;
+        else if (v === 'A') totalA++;
+        else if (v === 'J') totalJ++;
+        else if (v === 'T') totalT++;
+      }
+    });
+  });
+  const porcentajeP = totalRegistros > 0 ? Math.round(totalP / totalRegistros * 100) : 0;
+  const detalleEsp = especiales > 0
+    ? `<div class="stat-detalle">${clasesPasadas} ya cursadas · ${especiales} día${especiales === 1 ? '' : 's'} especial${especiales === 1 ? '' : 'es'}</div>`
+    : `<div class="stat-detalle">${clasesPasadas} ya cursadas</div>`;
+
+  return `
+    <div class="stats">
+      <div class="stat-card" data-tip="Cantidad de alumnos cargados en este curso">
+        <div class="stat-label">Alumnos</div>
+        <div class="stat-value">${totalAlumnos}</div>
+      </div>
+      <div class="stat-card" data-tip="Clases efectivas (excluyendo días especiales)">
+        <div class="stat-label">Clases efectivas</div>
+        <div class="stat-value">${totalClases}</div>
+        ${detalleEsp}
+      </div>
+      <div class="stat-card" data-tip="Porcentaje promedio de presentes sobre el total de asistencias registradas (excluyendo días especiales)">
+        <div class="stat-label">% Asistencia general</div>
+        <div class="stat-value" style="color:var(--ok)">${porcentajeP}%</div>
+        <div class="stat-detalle">${totalP} presentes de ${totalRegistros} registros</div>
+      </div>
+      <div class="stat-card" data-tip="Distribución de los registros cargados hasta ahora">
+        <div class="stat-label">Desglose</div>
+        <div class="stat-detalle" style="margin-top:0.4rem; line-height:1.7;">
+          <span class="estado-chip estado-P" style="width:18px;height:18px;line-height:18px;font-size:0.65rem;">P</span> ${totalP}
+          &nbsp;<span class="estado-chip estado-A" style="width:18px;height:18px;line-height:18px;font-size:0.65rem;">A</span> ${totalA}
+          &nbsp;<span class="estado-chip estado-J" style="width:18px;height:18px;line-height:18px;font-size:0.65rem;">J</span> ${totalJ}
+          &nbsp;<span class="estado-chip estado-T" style="width:18px;height:18px;line-height:18px;font-size:0.65rem;">T</span> ${totalT}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTablaAsistencias(curso, fechas) {
+  // Headers de fecha (con marca de día especial)
+  const headers = fechas.map(f => {
+    const k = fechaKey(f);
+    const motivo = diaEspecialMotivo(curso, k);
+    if (motivo) {
+      return `
+        <th class="col-fecha dia-especial" onclick="abrirModalDiaEspecial('${k}')"
+            data-tip="${escapeHtml(fechaCompleta(f) + ' — Día especial: ' + motivo + '. No cuenta para el cálculo de asistencia. Click para editar.')}">
+          <span class="fecha-dia">${f.getDate()}</span>
+          <span class="fecha-mes">${MESES_NOMBRES[f.getMonth()]}</span>
+        </th>
+      `;
+    }
+    return `
+      <th class="col-fecha" onclick="abrirModalDiaEspecial('${k}')"
+          data-tip="${escapeHtml(fechaCompleta(f) + ' — Click para marcar como día especial (feriado, excursión, etc.)')}">
+        <span class="fecha-dia">${f.getDate()}</span>
+        <span class="fecha-mes">${MESES_NOMBRES[f.getMonth()]}</span>
+      </th>
+    `;
+  }).join('');
+
+  // Filtrar y ordenar alumnos
+  const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroAsist, curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenAsist, curso, fechas);
+
+  const filas = ordenados.map((al) => {
+    const celdas = fechas.map(f => {
+      const k = fechaKey(f);
+      const motivo = diaEspecialMotivo(curso, k);
+      if (motivo) {
+        return `
+          <td class="celda-asistencia dia-especial" data-tip="${escapeHtml('Día especial: ' + motivo)}">
+            <span class="estado-chip" style="background:transparent; color:var(--info);">★</span>
+          </td>
+        `;
+      }
+      const v = al.asistencias?.[k] || '';
+      const tip = `${al.nombre} — ${fechaCompleta(f)} — ${ESTADO_LABEL[v]}${v ? '' : ' (click para marcar)'}`;
+      return `
+        <td class="celda-asistencia" onclick="ciclarAsistencia('${al.id}','${k}')" data-tip="${escapeHtml(tip)}">
+          <span class="estado-chip ${v ? 'estado-' + v : 'estado-vacio'}">${v || '·'}</span>
+        </td>
+      `;
+    }).join('');
+
+    const resumen = calcularResumenAlumno(al, fechas, curso);
+    const color = resumen.pct >= 80 ? 'var(--ok)' : resumen.pct >= 60 ? 'var(--warn)' : 'var(--bad)';
+    const filaClase = resumen.libre ? 'fila-libre' : '';
+    const badgeLibre = resumen.libre
+      ? `<span class="badge-estado badge-libre" data-tip="Asistencia ${resumen.pct}% — por debajo del ${UMBRAL_LIBRE}% requerido. El alumno está libre.">LIBRE</span>`
+      : '';
+
+    return `
+      <tr class="${filaClase}">
+        <td class="col-alumno">
+          ${escapeHtml(al.nombre)}${badgeLibre}${renderIconoMail(al)}
+          <span class="acciones-alumno">
+            <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
+          </span>
+        </td>
+        ${celdas}
+        <td class="col-resumen" data-tip="${resumen.p} presentes / ${resumen.total_registros} clases registradas">
+          <span style="color:${color}; font-weight:700;">${resumen.pct}%</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Toolbar
+  const filtroActivo = estado.filtroAsist !== 'todos';
+  const ordenActivo = estado.ordenAsist !== 'manual';
+  const ocultos = curso.alumnos.length - filtrados.length;
+
+  const toolbar = curso.alumnos.length > 0 ? `
+    <div class="toolbar">
+      <div class="toolbar-grupo">
+        <label>Ordenar</label>
+        <select onchange="cambiarOrden('asist', this.value)">
+          <option value="manual" ${estado.ordenAsist === 'manual' ? 'selected' : ''}>Orden de carga</option>
+          <option value="az" ${estado.ordenAsist === 'az' ? 'selected' : ''}>A → Z</option>
+          <option value="za" ${estado.ordenAsist === 'za' ? 'selected' : ''}>Z → A</option>
+          <option value="asistDesc" ${estado.ordenAsist === 'asistDesc' ? 'selected' : ''}>Mayor % asistencia</option>
+          <option value="asistAsc" ${estado.ordenAsist === 'asistAsc' ? 'selected' : ''}>Menor % asistencia</option>
+          <option value="estadoLibres" ${estado.ordenAsist === 'estadoLibres' ? 'selected' : ''}>Libres primero</option>
+        </select>
+      </div>
+      <div class="toolbar-grupo">
+        <label>Filtrar</label>
+        <select onchange="cambiarFiltro('asist', this.value)">
+          <option value="todos" ${estado.filtroAsist === 'todos' ? 'selected' : ''}>Todos los alumnos</option>
+          <option value="libres" ${estado.filtroAsist === 'libres' ? 'selected' : ''}>Solo libres</option>
+          <option value="regulares" ${estado.filtroAsist === 'regulares' ? 'selected' : ''}>Solo regulares</option>
+        </select>
+      </div>
+      <button class="btn btn-dia-especial" onclick="abrirModalDiaEspecial()" data-tip="Marcar una fecha como feriado, excursión o suspensión">
+        ★ Día especial
+      </button>
+      ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('asist')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
+      <div class="toolbar-info">
+        ${filtroActivo ? `<span class="badge-filtro">${ETIQUETAS_FILTRO_ASIST[estado.filtroAsist]}</span>` : ''}
+        ${ocultos > 0 ? `<span style="margin-left:0.4rem;">${filtrados.length} de ${curso.alumnos.length}</span>` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  // Empty state si filtros dejan todo vacío
+  const tablaCuerpo = filas || (curso.alumnos.length > 0
+    ? `<tr><td colspan="${fechas.length + 2}" class="empty-filtro">Ningún alumno coincide con el filtro seleccionado.</td></tr>`
+    : '');
+
+  return `
+    ${toolbar}
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-alumno">Alumno (${ocultos > 0 ? filtrados.length + '/' + curso.alumnos.length : curso.alumnos.length})</th>
+            ${headers}
+            <th class="col-resumen" data-tip="Porcentaje de asistencia: presentes sobre clases registradas (excluyendo días especiales)">% Asist.</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tablaCuerpo}
+          <tr class="agregar-alumno-row">
+            <td colspan="${fechas.length + 2}">
+              <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function calcularResumenAlumno(al, fechas, curso) {
+  let p = 0, total_registros = 0;
+  fechas.forEach(f => {
+    const k = fechaKey(f);
+    // Excluir días especiales del cálculo
+    if (curso && diaEspecialMotivo(curso, k)) return;
+    const v = al.asistencias?.[k];
+    if (v) {
+      total_registros++;
+      if (v === 'P' || v === 'T') p++; // Tarde cuenta como presente para el %
+    }
+  });
+  const pct = total_registros > 0 ? Math.round(p / total_registros * 100) : 0;
+  const libre = total_registros > 0 && pct < UMBRAL_LIBRE;
+  return { p, total_registros, pct, libre };
+}
+
+// =========================================================
+// ORDEN Y FILTRO
+// =========================================================
+function compararAlumnos(a, b, criterio, curso, fechas) {
+  const colA = new Intl.Collator('es', { sensitivity: 'base' });
+  switch (criterio) {
+    case 'az':
+      return colA.compare(a.nombre, b.nombre);
+    case 'za':
+      return colA.compare(b.nombre, a.nombre);
+    case 'asistDesc': {
+      const ra = calcularResumenAlumno(a, fechas, curso);
+      const rb = calcularResumenAlumno(b, fechas, curso);
+      // Sin registros van al final
+      if (ra.total_registros === 0 && rb.total_registros === 0) return colA.compare(a.nombre, b.nombre);
+      if (ra.total_registros === 0) return 1;
+      if (rb.total_registros === 0) return -1;
+      return rb.pct - ra.pct;
+    }
+    case 'asistAsc': {
+      const ra = calcularResumenAlumno(a, fechas, curso);
+      const rb = calcularResumenAlumno(b, fechas, curso);
+      if (ra.total_registros === 0 && rb.total_registros === 0) return colA.compare(a.nombre, b.nombre);
+      if (ra.total_registros === 0) return 1;
+      if (rb.total_registros === 0) return -1;
+      return ra.pct - rb.pct;
+    }
+    case 'estadoLibres': {
+      // Libres primero
+      const ra = calcularResumenAlumno(a, fechas, curso);
+      const rb = calcularResumenAlumno(b, fechas, curso);
+      if (ra.libre && !rb.libre) return -1;
+      if (!ra.libre && rb.libre) return 1;
+      return colA.compare(a.nombre, b.nombre);
+    }
+    case 'promDesc': {
+      const pa = calcularPromedioAlumno(a, curso.trabajos);
+      const pb = calcularPromedioAlumno(b, curso.trabajos);
+      if (pa === null && pb === null) return colA.compare(a.nombre, b.nombre);
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return pb - pa;
+    }
+    case 'promAsc': {
+      const pa = calcularPromedioAlumno(a, curso.trabajos);
+      const pb = calcularPromedioAlumno(b, curso.trabajos);
+      if (pa === null && pb === null) return colA.compare(a.nombre, b.nombre);
+      if (pa === null) return 1;
+      if (pb === null) return -1;
+      return pa - pb;
+    }
+    case 'estadoPeligro': {
+      const ta = curso.trabajos.filter(t => !tieneNotaCargada(a, t)).length;
+      const tb = curso.trabajos.filter(t => !tieneNotaCargada(b, t)).length;
+      const aPeligro = ta > UMBRAL_PELIGRO_TRABAJOS;
+      const bPeligro = tb > UMBRAL_PELIGRO_TRABAJOS;
+      if (aPeligro && !bPeligro) return -1;
+      if (!aPeligro && bPeligro) return 1;
+      return colA.compare(a.nombre, b.nombre);
+    }
+    default:
+      return 0; // manual
+  }
+}
+
+function ordenarAlumnos(alumnos, criterio, curso, fechas) {
+  if (criterio === 'manual') return alumnos.slice();
+  return alumnos.slice().sort((a, b) => compararAlumnos(a, b, criterio, curso, fechas));
+}
+
+function filtrarAlumnos(alumnos, criterio, curso, fechas) {
+  if (criterio === 'todos') return alumnos;
+  return alumnos.filter(al => {
+    switch (criterio) {
+      case 'libres':
+        return calcularResumenAlumno(al, fechas, curso).libre;
+      case 'regulares':
+        return !calcularResumenAlumno(al, fechas, curso).libre;
+      case 'aprobados': {
+        const p = calcularPromedioAlumno(al, curso.trabajos);
+        return p !== null && p >= 6;
+      }
+      case 'desaprobados': {
+        const p = calcularPromedioAlumno(al, curso.trabajos);
+        return p !== null && p < 6;
+      }
+      case 'sinNotas': {
+        const p = calcularPromedioAlumno(al, curso.trabajos);
+        return p === null;
+      }
+      case 'peligro': {
+        const sin = curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length;
+        return sin > UMBRAL_PELIGRO_TRABAJOS;
+      }
+      case 'conMensaje':
+        return al.incentivo && al.incentivo.trim() !== '';
+      case 'sinMensaje':
+        return !al.incentivo || al.incentivo.trim() === '';
+      default:
+        return true;
+    }
+  });
+}
+
+const ETIQUETAS_ORDEN = {
+  manual: 'orden de carga',
+  az: 'A → Z',
+  za: 'Z → A',
+  asistDesc: 'mayor % primero',
+  asistAsc: 'menor % primero',
+  promDesc: 'mayor promedio primero',
+  promAsc: 'menor promedio primero',
+  estadoLibres: 'libres primero',
+  estadoPeligro: 'en peligro primero'
+};
+
+const ETIQUETAS_FILTRO_ASIST = {
+  todos: 'Todos',
+  libres: 'Libres',
+  regulares: 'Regulares (no libres)'
+};
+
+const ETIQUETAS_FILTRO_NOTAS = {
+  todos: 'Todos',
+  aprobados: 'Aprobados (≥ 6)',
+  desaprobados: 'Desaprobados (< 6)',
+  sinNotas: 'Sin notas cargadas',
+  peligro: 'En peligro',
+  conMensaje: 'Con mensaje',
+  sinMensaje: 'Sin mensaje'
+};
+
+function cambiarOrden(tab, valor) {
+  if (tab === 'asist') estado.ordenAsist = valor;
+  else estado.ordenNotas = valor;
+  guardarEstado();
+  renderMain();
+}
+
+function cambiarFiltro(tab, valor) {
+  if (tab === 'asist') estado.filtroAsist = valor;
+  else estado.filtroNotas = valor;
+  guardarEstado();
+  renderMain();
+}
+
+function limpiarOrdenFiltro(tab) {
+  if (tab === 'asist') { estado.ordenAsist = 'manual'; estado.filtroAsist = 'todos'; }
+  else { estado.ordenNotas = 'manual'; estado.filtroNotas = 'todos'; }
+  guardarEstado();
+  renderMain();
+}
+
+// =========================================================
+// NOTAS
+// =========================================================
+function renderNotas(curso) {
+  const cont = document.getElementById('tab-contenido');
+
+  // Calcular alumnos en peligro: más de UMBRAL_PELIGRO_TRABAJOS trabajos sin nota
+  let peligro = [];
+  if (curso.trabajos.length > 0) {
+    peligro = curso.alumnos.filter(al => {
+      const sinEntregar = curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length;
+      return sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
+    });
+  }
+  const alertaPeligro = peligro.length > 0
+    ? `<div class="alerta-warn"><span style="font-size:1.2rem;">⚠</span> <span><strong>${peligro.length} ${peligro.length === 1 ? 'alumno está en peligro' : 'alumnos están en peligro'} de desaprobar</strong> (más de ${UMBRAL_PELIGRO_TRABAJOS} trabajos sin entregar): ${peligro.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
+    : '';
+
+  cont.innerHTML = renderStatsNotas(curso) + alertaPeligro + renderTablaNotas(curso);
+}
+
+function renderStatsNotas(curso) {
+  const totalTrabajos = curso.trabajos.length;
+  const promedios = curso.alumnos
+    .map(al => calcularPromedioAlumno(al, curso.trabajos))
+    .filter(p => p !== null);
+  const promedioCurso = promedios.length > 0
+    ? (promedios.reduce((a,b) => a+b, 0) / promedios.length).toFixed(2)
+    : '—';
+
+  let aprobados = 0, regulares = 0;
+  promedios.forEach(p => { if (p >= 6) aprobados++; else regulares++; });
+
+  return `
+    <div class="stats">
+      <div class="stat-card" data-tip="Cantidad de trabajos cargados en el curso">
+        <div class="stat-label">Trabajos</div>
+        <div class="stat-value">${totalTrabajos}</div>
+      </div>
+      <div class="stat-card" data-tip="Promedio numérico de todos los alumnos sobre todos sus trabajos cargados">
+        <div class="stat-label">Promedio del curso</div>
+        <div class="stat-value" style="color:var(--info)">${promedioCurso}</div>
+      </div>
+      <div class="stat-card" data-tip="Alumnos cuyo promedio es mayor o igual a 6 (Bien)">
+        <div class="stat-label">Aprobados</div>
+        <div class="stat-value" style="color:var(--ok)">${aprobados}</div>
+        <div class="stat-detalle">${regulares} en Regular</div>
+      </div>
+      <div class="stat-card" data-tip="Escala valorativa: Regular 1-5, Bien 6-7, Muy bien 8-9, Excelente 10">
+        <div class="stat-label">Escala</div>
+        <div class="stat-detalle" style="margin-top:0.4rem; line-height:1.8;">
+          <span class="estado-chip nota-Regular" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">R</span> 1-5 &nbsp;
+          <span class="estado-chip nota-Bien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">B</span> 6-7 &nbsp;
+          <span class="estado-chip nota-MuyBien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">MB</span> 8-9 &nbsp;
+          <span class="estado-chip nota-Excelente" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">E</span> 10
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTablaNotas(curso) {
+  const headers = curso.trabajos.map(t => {
+    const tieneRubrica = t.criterios && t.criterios.length > 0;
+    const tipRubrica = tieneRubrica
+      ? `Rúbrica: ${t.criterios.map(c => c.nombre).join(' · ')}`
+      : 'Sin rúbrica (nota única). Click en "Rúbrica" para agregar criterios.';
+    return `
+      <th class="col-trabajo" data-tip="${escapeHtml(tipRubrica)}">
+        <span class="trabajo-tit">
+          ${escapeHtml(t.nombre)}${tieneRubrica ? `<span class="indicador-rubrica">${t.criterios.length} crit.</span>` : ''}
+        </span>
+        <div class="acciones-trabajo">
+          <button onclick="abrirModalRubrica('${t.id}')" data-tip="Definir criterios de evaluación">Rúbrica</button>
+          <button class="borrar" onclick="borrarTrabajo('${t.id}')" data-tip="Eliminar este trabajo y sus notas">×</button>
+        </div>
+      </th>
+    `;
+  }).join('');
+
+  // Filtrar y ordenar
+  const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroNotas, curso, []);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenNotas, curso, []);
+
+  const filas = ordenados.map(al => {
+    const celdas = curso.trabajos.map(t => {
+      const nota = calcularNotaTrabajo(al, t);
+      const cat = categoriaDeNota(nota);
+      const tieneRubrica = t.criterios && t.criterios.length > 0;
+
+      let display, tip;
+      if (cat) {
+        display = `<span class="valor-display nota-${cat.clase}">${cat.sigla}</span>`;
+        tip = `${al.nombre} · ${t.nombre} — ${cat.label} (${nota.toFixed(2)})${tieneRubrica ? ' · click para editar criterios' : ' · click para editar'}`;
+      } else {
+        display = `<span class="valor-display" style="color:var(--texto-tenue); background:transparent;">—</span>`;
+        tip = `${al.nombre} · ${t.nombre} — sin nota · click para cargar`;
+      }
+
+      const onclick = tieneRubrica
+        ? `onclick="abrirNotasCriterios('${al.id}','${t.id}')"`
+        : `onclick="iniciarEdicionNotaSimple(this,'${al.id}','${t.id}')"`;
+
+      return `<td class="celda-nota-valorativa" ${onclick} data-tip="${escapeHtml(tip)}">${display}</td>`;
+    }).join('');
+
+    const prom = calcularPromedioAlumno(al, curso.trabajos);
+    const promTxt = prom !== null ? prom.toFixed(2) : '—';
+    const cat = prom !== null ? categoriaDeNota(prom) : null;
+    const color = cat
+      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
+      : 'var(--texto-tenue)';
+
+    // Detección de peligro
+    const sinEntregar = curso.trabajos.length > 0
+      ? curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length
+      : 0;
+    const enPeligro = sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
+    const filaClase = enPeligro ? 'fila-peligro' : '';
+    const badgePeligro = enPeligro
+      ? `<span class="badge-estado badge-peligro" data-tip="Tiene ${sinEntregar} trabajos sin entregar — en peligro de desaprobar.">EN PELIGRO</span>`
+      : '';
+
+    // Celda de mensaje (rectángulo ancho al lado del promedio)
+    const tieneMsg = al.incentivo && al.incentivo.trim() !== '';
+    const mensajeCelda = tieneMsg
+      ? `<span class="celda-mensaje-content" onclick="abrirModalIncentivo('${al.id}')" data-tip="Click para editar el mensaje de cierre">${escapeHtml(al.incentivo)}</span>`
+      : `<span class="celda-mensaje-content vacio" onclick="abrirModalIncentivo('${al.id}')" data-tip="Click para agregar un mensaje de cierre de año">Agregar mensaje de cierre</span>`;
+
+    return `
+      <tr class="${filaClase}">
+        <td class="col-alumno">
+          ${escapeHtml(al.nombre)}${badgePeligro}${renderIconoMail(al)}
+          <span class="acciones-alumno">
+            <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
+          </span>
+        </td>
+        ${celdas}
+        <td class="col-resumen" data-tip="${cat ? 'Promedio: ' + promTxt + ' (' + cat.label + ')' : 'Sin notas suficientes para calcular promedio'}">
+          <span style="color:${color}; font-weight:700;">${promTxt}</span>
+        </td>
+        <td class="col-mensaje">${mensajeCelda}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const colspan = curso.trabajos.length + 3; // +3 = alumno + promedio + mensaje (no contamos botón + trabajo aquí)
+
+  // Toolbar
+  const filtroActivo = estado.filtroNotas !== 'todos';
+  const ordenActivo = estado.ordenNotas !== 'manual';
+  const ocultos = curso.alumnos.length - filtrados.length;
+
+  const toolbar = curso.alumnos.length > 0 ? `
+    <div class="toolbar">
+      <div class="toolbar-grupo">
+        <label>Ordenar</label>
+        <select onchange="cambiarOrden('notas', this.value)">
+          <option value="manual" ${estado.ordenNotas === 'manual' ? 'selected' : ''}>Orden de carga</option>
+          <option value="az" ${estado.ordenNotas === 'az' ? 'selected' : ''}>A → Z</option>
+          <option value="za" ${estado.ordenNotas === 'za' ? 'selected' : ''}>Z → A</option>
+          <option value="promDesc" ${estado.ordenNotas === 'promDesc' ? 'selected' : ''}>Mayor promedio</option>
+          <option value="promAsc" ${estado.ordenNotas === 'promAsc' ? 'selected' : ''}>Menor promedio</option>
+          <option value="estadoPeligro" ${estado.ordenNotas === 'estadoPeligro' ? 'selected' : ''}>En peligro primero</option>
+        </select>
+      </div>
+      <div class="toolbar-grupo">
+        <label>Filtrar</label>
+        <select onchange="cambiarFiltro('notas', this.value)">
+          <option value="todos" ${estado.filtroNotas === 'todos' ? 'selected' : ''}>Todos los alumnos</option>
+          <option value="aprobados" ${estado.filtroNotas === 'aprobados' ? 'selected' : ''}>Aprobados (≥ 6)</option>
+          <option value="desaprobados" ${estado.filtroNotas === 'desaprobados' ? 'selected' : ''}>Desaprobados (&lt; 6)</option>
+          <option value="sinNotas" ${estado.filtroNotas === 'sinNotas' ? 'selected' : ''}>Sin notas cargadas</option>
+          <option value="peligro" ${estado.filtroNotas === 'peligro' ? 'selected' : ''}>En peligro</option>
+          <option value="conMensaje" ${estado.filtroNotas === 'conMensaje' ? 'selected' : ''}>Con mensaje cargado</option>
+          <option value="sinMensaje" ${estado.filtroNotas === 'sinMensaje' ? 'selected' : ''}>Sin mensaje</option>
+        </select>
+      </div>
+      ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('notas')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
+      <div class="toolbar-info">
+        ${filtroActivo ? `<span class="badge-filtro">${ETIQUETAS_FILTRO_NOTAS[estado.filtroNotas]}</span>` : ''}
+        ${ocultos > 0 ? `<span style="margin-left:0.4rem;">${filtrados.length} de ${curso.alumnos.length}</span>` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  const tablaCuerpo = filas || (curso.alumnos.length > 0
+    ? `<tr><td colspan="${colspan + 1}" class="empty-filtro">Ningún alumno coincide con el filtro seleccionado.</td></tr>`
+    : '');
+
+  return `
+    ${toolbar}
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-alumno">Alumno (${ocultos > 0 ? filtrados.length + '/' + curso.alumnos.length : curso.alumnos.length})</th>
+            ${headers}
+            <th class="col-trabajo" style="background:var(--fondo-alt);">
+              <button class="btn-add-mini" style="border:1px dashed var(--borde-fuerte); padding:0.3rem 0.6rem; color:var(--texto-suave);" onclick="abrirModalTrabajo()" data-tip="Agregar una nueva columna de trabajo">+ Trabajo</button>
+            </th>
+            <th class="col-resumen" data-tip="Promedio numérico de los trabajos cargados">Promedio</th>
+            <th class="col-mensaje" data-tip="Mensaje personalizado para el cierre del año">Mensaje de cierre</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tablaCuerpo}
+          <tr class="agregar-alumno-row">
+            <td colspan="${colspan + 1}">
+              <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function calcularPromedioAlumno(al, trabajos) {
+  if (!trabajos.length) return null;
+  const valores = trabajos
+    .map(t => calcularNotaTrabajo(al, t))
+    .filter(v => v !== null);
+  if (valores.length === 0) return null;
+  return valores.reduce((a,b) => a+b, 0) / valores.length;
+}
+
+// Render botón mail (junto al nombre del alumno)
+function renderIconoMail(al) {
+  const tiene = al.email && al.email.trim() !== '';
+  const tip = tiene
+    ? `Mail rápido a ${al.email} — click para opciones`
+    : 'Cargar email para enviar mails rápidos';
+  return `<button class="btn-mail ${tiene ? 'tiene-mail' : ''}" onclick="abrirMenuMail(event, '${al.id}')" data-tip="${escapeHtml(tip)}">✉</button>`;
+}
+
+// Render icono incentivo (kept for compatibility, not used currently)
+function renderIconoIncentivo(al) {
+  const tiene = al.incentivo && al.incentivo.trim() !== '';
+  const tip = tiene
+    ? `Mensaje: "${escapeHtml(al.incentivo)}" · click para editar`
+    : 'Agregar mensaje personalizado para el alumno';
+  return `<button class="badge-incentivo ${tiene ? '' : 'vacio'}" onclick="abrirModalIncentivo('${al.id}')" data-tip="${tip}">💬</button>`;
+}
+
+// =========================================================
+// ACCIONES
+// =========================================================
+function abrirModalEscuela() {
+  document.getElementById('input-escuela-nombre').value = '';
+  document.getElementById('modal-escuela').classList.add('activo');
+  setTimeout(() => document.getElementById('input-escuela-nombre').focus(), 100);
+}
+
+function guardarEscuela() {
+  const nombre = document.getElementById('input-escuela-nombre').value.trim();
+  if (!nombre) { toast('Ingresá un nombre'); return; }
+  estado.escuelas.push({ id: uid(), nombre, cursos: [] });
+  cerrarModales();
+  guardarEstado();
+  renderSidebar();
+  toast('Escuela creada');
+}
+
+function abrirModalCurso(escuelaId) {
+  modoEdicion = { tipo: 'curso', escuelaId };
+  document.getElementById('input-curso-nombre').value = '';
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  document.getElementById('input-curso-anio-inicio').value = `${anio}-03-01`;
+  document.getElementById('input-curso-anio-fin').value = `${anio}-12-15`;
+  document.querySelectorAll('.dia-toggle').forEach(t => t.classList.remove('activo'));
+  document.getElementById('modal-curso').classList.add('activo');
+  setTimeout(() => document.getElementById('input-curso-nombre').focus(), 100);
+}
+
+function guardarCurso() {
+  const nombre = document.getElementById('input-curso-nombre').value.trim();
+  const inicio = document.getElementById('input-curso-anio-inicio').value.trim();
+  const fin = document.getElementById('input-curso-anio-fin').value.trim();
+  const dias = Array.from(document.querySelectorAll('.dia-toggle.activo')).map(t => Number(t.dataset.dia));
+
+  if (!nombre) { toast('Ingresá un nombre de curso'); return; }
+  if (!inicio || !fin) { toast('Ingresá las fechas de inicio y fin (AAAA-MM-DD)'); return; }
+  if (dias.length === 0) { toast('Seleccioná al menos un día de la semana'); return; }
+  if (new Date(inicio) > new Date(fin)) { toast('La fecha de inicio debe ser anterior al fin'); return; }
+
+  const escuela = estado.escuelas.find(e => e.id === modoEdicion.escuelaId);
+  const nuevoCurso = {
+    id: uid(),
+    nombre,
+    dias,
+    inicio,
+    fin,
+    alumnos: [],
+    trabajos: []
+  };
+  escuela.cursos.push(nuevoCurso);
+  estado.cursoActivoId = nuevoCurso.id;
+  cerrarModales();
+  guardarEstado();
+  renderSidebar();
+  renderMain();
+  toast('Curso creado');
+}
+
+function abrirModalTrabajo() {
+  document.getElementById('input-trabajo-nombre').value = '';
+  document.getElementById('modal-trabajo').classList.add('activo');
+  setTimeout(() => document.getElementById('input-trabajo-nombre').focus(), 100);
+}
+
+function guardarTrabajo() {
+  const nombre = document.getElementById('input-trabajo-nombre').value.trim();
+  if (!nombre) { toast('Ingresá un título'); return; }
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  activo.curso.trabajos.push({ id: uid(), nombre });
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Trabajo agregado');
+}
+
+function cerrarModales() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('activo'));
+}
+
+function seleccionarCurso(id) {
+  estado.cursoActivoId = id;
+  guardarEstado();
+  renderSidebar();
+  renderMain();
+}
+
+function borrarEscuela(id) {
+  const esc = estado.escuelas.find(e => e.id === id);
+  if (!esc) return;
+  if (!confirm(`¿Eliminar la escuela "${esc.nombre}" y todos sus cursos?`)) return;
+  if (esc.cursos.some(c => c.id === estado.cursoActivoId)) estado.cursoActivoId = null;
+  estado.escuelas = estado.escuelas.filter(e => e.id !== id);
+  guardarEstado();
+  renderSidebar();
+  renderMain();
+  toast('Escuela eliminada');
+}
+
+function borrarCurso(id) {
+  if (!confirm('¿Eliminar este curso? Se perderán asistencias y notas.')) return;
+  estado.escuelas.forEach(e => {
+    e.cursos = e.cursos.filter(c => c.id !== id);
+  });
+  if (estado.cursoActivoId === id) estado.cursoActivoId = null;
+  guardarEstado();
+  renderSidebar();
+  renderMain();
+  toast('Curso eliminado');
+}
+
+function borrarAlumno(id) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === id);
+  if (!al) return;
+  if (!confirm(`¿Eliminar a ${al.nombre}?`)) return;
+  activo.curso.alumnos = activo.curso.alumnos.filter(a => a.id !== id);
+  guardarEstado();
+  renderMain();
+}
+
+function borrarTrabajo(id) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  if (!confirm('¿Eliminar este trabajo? Se perderán las notas cargadas.')) return;
+  activo.curso.trabajos = activo.curso.trabajos.filter(t => t.id !== id);
+  activo.curso.alumnos.forEach(a => { if (a.notas) delete a.notas[id]; });
+  guardarEstado();
+  renderMain();
+}
+
+function agregarAlumno() {
+  const input = document.getElementById('input-nuevo-alumno');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  activo.curso.alumnos.push({
+    id: uid(),
+    nombre,
+    asistencias: {},
+    notas: {}
+  });
+  guardarEstado();
+  renderMain();
+  setTimeout(() => {
+    const nuevoInput = document.getElementById('input-nuevo-alumno');
+    if (nuevoInput) nuevoInput.focus();
+  }, 50);
+}
+
+function ciclarAsistencia(alumnoId, fecha) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  if (!al.asistencias) al.asistencias = {};
+  const actual = al.asistencias[fecha] || '';
+  const idx = ESTADOS_ASIST.indexOf(actual);
+  const proximo = ESTADOS_ASIST[(idx + 1) % ESTADOS_ASIST.length];
+  if (proximo === '') delete al.asistencias[fecha];
+  else al.asistencias[fecha] = proximo;
+  guardarEstado();
+  renderMain();
+}
+
+// Edición inline de nota simple (sin rúbrica)
+function iniciarEdicionNotaSimple(celda, alumnoId, trabajoId) {
+  if (celda.querySelector('input')) return; // ya editando
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  const valorActual = al.notas?.[trabajoId] ?? '';
+  celda.classList.add('editando');
+  celda.innerHTML = `<input type="number" class="editor-nota" min="1" max="10" step="0.1" value="${valorActual}">`;
+  const input = celda.querySelector('input');
+  input.focus();
+  input.select();
+  const finalizar = (guardar) => {
+    if (guardar) setNotaSimple(alumnoId, trabajoId, input.value);
+    else renderMain();
+  };
+  input.addEventListener('blur', () => finalizar(true));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { input.blur(); }
+    else if (e.key === 'Escape') { input.value = valorActual; finalizar(false); }
+  });
+}
+
+function setNotaSimple(alumnoId, trabajoId, valor) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  if (!al.notas) al.notas = {};
+  if (valor === '' || valor === null) {
+    delete al.notas[trabajoId];
+  } else {
+    const n = Number(valor);
+    if (isNaN(n) || n < 1 || n > 10) {
+      toast('La nota debe estar entre 1 y 10');
+      renderMain();
+      return;
+    } else {
+      al.notas[trabajoId] = n;
+    }
+  }
+  guardarEstado();
+  renderMain();
+}
+
+// =========================================================
+// RÚBRICAS
+// =========================================================
+let edicionActual = { trabajoId: null, alumnoId: null, criteriosTemp: [] };
+
+function abrirModalRubrica(trabajoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === trabajoId);
+  if (!t) return;
+  edicionActual.trabajoId = trabajoId;
+  edicionActual.criteriosTemp = t.criterios ? JSON.parse(JSON.stringify(t.criterios)) : [];
+
+  document.getElementById('rubrica-titulo').textContent = `Rúbrica · ${t.nombre}`;
+  document.getElementById('btn-quitar-rubrica').style.display =
+    edicionActual.criteriosTemp.length > 0 ? '' : 'none';
+
+  renderCriterios();
+  document.getElementById('modal-rubrica').classList.add('activo');
+}
+
+function renderCriterios() {
+  const cont = document.getElementById('criterios-lista');
+  if (edicionActual.criteriosTemp.length === 0) {
+    cont.innerHTML = `<p style="font-size:0.82rem; color:var(--texto-tenue); padding:0.5rem 0;">Sin criterios. Agregá al menos uno para usar rúbrica, o dejá vacío para evaluar con una nota única.</p>`;
+    return;
+  }
+  cont.innerHTML = edicionActual.criteriosTemp.map((c, i) => `
+    <div class="criterio-row">
+      <input type="text" value="${escapeHtml(c.nombre)}" placeholder="Nombre del criterio (ej: Ortografía)"
+        oninput="edicionActual.criteriosTemp[${i}].nombre = this.value">
+      <div>
+        <input type="number" value="${c.peso}" min="1" max="100" step="1"
+          oninput="edicionActual.criteriosTemp[${i}].peso = Number(this.value) || 1"
+          data-tip="Peso del criterio en el promedio (valor relativo)">
+        <div class="peso-label">peso</div>
+      </div>
+      <button class="borrar-criterio" onclick="quitarCriterio(${i})" data-tip="Eliminar criterio">×</button>
+    </div>
+  `).join('');
+}
+
+function agregarCriterio() {
+  edicionActual.criteriosTemp.push({ id: uid(), nombre: '', peso: 1 });
+  renderCriterios();
+  document.getElementById('btn-quitar-rubrica').style.display = '';
+  // Focus en el último input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#criterios-lista input[type="text"]');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function quitarCriterio(idx) {
+  edicionActual.criteriosTemp.splice(idx, 1);
+  renderCriterios();
+  if (edicionActual.criteriosTemp.length === 0) {
+    document.getElementById('btn-quitar-rubrica').style.display = 'none';
+  }
+}
+
+function guardarRubrica() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
+  if (!t) return;
+
+  // Validar criterios: deben tener nombre
+  const criteriosValidos = edicionActual.criteriosTemp.filter(c => c.nombre.trim() !== '');
+  if (criteriosValidos.length !== edicionActual.criteriosTemp.length && edicionActual.criteriosTemp.length > 0) {
+    toast('Cada criterio debe tener un nombre');
+    return;
+  }
+
+  const tieneAhora = (t.criterios && t.criterios.length > 0);
+  const tendrá = criteriosValidos.length > 0;
+
+  // Si pasamos de no-rúbrica a con-rúbrica, las notas planas se pierden.
+  // Si pasamos de con-rúbrica a sin-rúbrica, también.
+  if ((tieneAhora && !tendrá) || (!tieneAhora && tendrá)) {
+    if (!confirm('Cambiar el modo de evaluación borrará las notas ya cargadas para este trabajo. ¿Continuar?')) return;
+    activo.curso.alumnos.forEach(al => {
+      if (al.notas) delete al.notas[t.id];
+    });
+  } else if (tieneAhora && tendrá) {
+    // Limpiar notas de criterios que ya no existen
+    const idsValidos = new Set(criteriosValidos.map(c => c.id));
+    activo.curso.alumnos.forEach(al => {
+      const notasCrit = al.notas?.[t.id];
+      if (notasCrit && typeof notasCrit === 'object') {
+        for (const k in notasCrit) {
+          if (!idsValidos.has(k)) delete notasCrit[k];
+        }
+      }
+    });
+  }
+
+  t.criterios = criteriosValidos.length > 0 ? criteriosValidos : undefined;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast(criteriosValidos.length > 0 ? 'Rúbrica guardada' : 'Rúbrica eliminada');
+}
+
+function quitarRubrica() {
+  if (!confirm('¿Quitar la rúbrica? Las notas por criterio cargadas se perderán.')) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
+  if (!t) return;
+  delete t.criterios;
+  activo.curso.alumnos.forEach(al => {
+    if (al.notas) delete al.notas[t.id];
+  });
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Rúbrica eliminada');
+}
+
+// Modal de carga de notas por criterios
+function abrirNotasCriterios(alumnoId, trabajoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === trabajoId);
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!t || !al || !t.criterios) return;
+
+  edicionActual.trabajoId = trabajoId;
+  edicionActual.alumnoId = alumnoId;
+  edicionActual.notasTemp = { ...(al.notas?.[trabajoId] || {}) };
+
+  document.getElementById('notas-criterios-titulo').textContent = `${al.nombre} · ${t.nombre}`;
+  document.getElementById('notas-criterios-sub').textContent =
+    `Cargá una nota (1-10) para cada criterio. La nota final del trabajo se calcula como promedio ponderado por los pesos.`;
+
+  renderNotasCriteriosLista();
+  document.getElementById('modal-notas-criterios').classList.add('activo');
+}
+
+function renderNotasCriteriosLista() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
+  if (!t || !t.criterios) return;
+
+  const cont = document.getElementById('notas-criterios-lista');
+  cont.innerHTML = t.criterios.map((c) => {
+    const v = edicionActual.notasTemp[c.id] ?? '';
+    const cat = categoriaDeNota(v);
+    const colorChip = cat ? `nota-${cat.clase}` : '';
+    return `
+      <div class="criterio-row" style="grid-template-columns: 1fr 80px 80px;">
+        <div>
+          <div style="font-weight:500; font-size:0.9rem;">${escapeHtml(c.nombre)}</div>
+          <div style="font-size:0.7rem; color:var(--texto-tenue);">Peso: ${c.peso}</div>
+        </div>
+        <input type="number" min="1" max="10" step="0.1" value="${v}" placeholder="—"
+          data-criterio="${c.id}"
+          oninput="onCriterioInput('${c.id}', this.value)">
+        <div style="text-align:center;">
+          <span class="valor-display ${colorChip}" id="chip-${c.id}" style="${cat ? '' : 'color:var(--texto-tenue);background:transparent;'}">${cat ? cat.sigla : '—'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  actualizarNotaFinalDisplay();
+}
+
+function onCriterioInput(criterioId, valor) {
+  if (valor === '' || valor === null) {
+    delete edicionActual.notasTemp[criterioId];
+  } else {
+    const n = Number(valor);
+    if (!isNaN(n) && n >= 1 && n <= 10) {
+      edicionActual.notasTemp[criterioId] = n;
+    }
+  }
+  // Actualizar chip visual
+  const chip = document.getElementById('chip-' + criterioId);
+  const cat = categoriaDeNota(valor);
+  if (chip) {
+    chip.className = 'valor-display ' + (cat ? `nota-${cat.clase}` : '');
+    chip.textContent = cat ? cat.sigla : '—';
+    if (!cat) chip.style.cssText = 'color:var(--texto-tenue);background:transparent;';
+    else chip.style.cssText = '';
+  }
+  actualizarNotaFinalDisplay();
+}
+
+function actualizarNotaFinalDisplay() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
+  if (!t || !t.criterios) return;
+
+  let sumaPesos = 0, sumaPond = 0, alguna = false;
+  for (const c of t.criterios) {
+    const v = edicionActual.notasTemp[c.id];
+    const peso = Number(c.peso) || 1;
+    if (v !== undefined && v !== null && v !== '' && !isNaN(v)) {
+      sumaPond += Number(v) * peso;
+      sumaPesos += peso;
+      alguna = true;
+    }
+  }
+  const display = document.getElementById('nota-final-display');
+  if (!alguna || sumaPesos === 0) {
+    display.textContent = '—';
+    display.style.color = 'var(--texto-tenue)';
+  } else {
+    const final = sumaPond / sumaPesos;
+    const cat = categoriaDeNota(final);
+    display.innerHTML = `${final.toFixed(2)} <span style="font-size:0.8rem; opacity:0.7;">(${cat?.label || '—'})</span>`;
+    display.style.color = cat
+      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
+      : 'var(--texto)';
+  }
+}
+
+function guardarNotasCriterios() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al) return;
+  if (!al.notas) al.notas = {};
+  // Si no hay ninguna nota, eliminar el registro
+  const tieneAlguna = Object.values(edicionActual.notasTemp).some(v =>
+    v !== undefined && v !== null && v !== '' && !isNaN(v)
+  );
+  if (tieneAlguna) {
+    al.notas[edicionActual.trabajoId] = { ...edicionActual.notasTemp };
+  } else {
+    delete al.notas[edicionActual.trabajoId];
+  }
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Notas guardadas');
+}
+
+// =========================================================
+// INCENTIVOS
+// =========================================================
+function abrirModalIncentivo(alumnoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  edicionActual.alumnoId = alumnoId;
+  document.getElementById('incentivo-titulo').textContent = `Mensaje para ${al.nombre}`;
+  document.getElementById('input-incentivo').value = al.incentivo || '';
+  document.getElementById('btn-borrar-incentivo').style.display = al.incentivo ? '' : 'none';
+  document.getElementById('modal-incentivo').classList.add('activo');
+  setTimeout(() => document.getElementById('input-incentivo').focus(), 100);
+}
+
+function guardarIncentivo() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al) return;
+  const texto = document.getElementById('input-incentivo').value.trim();
+  if (texto) al.incentivo = texto;
+  else delete al.incentivo;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast(texto ? 'Mensaje guardado' : 'Mensaje eliminado');
+}
+
+function borrarIncentivo() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al) return;
+  delete al.incentivo;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Mensaje eliminado');
+}
+
+// =========================================================
+// DÍAS ESPECIALES (feriados / excursiones)
+// =========================================================
+let diaEspecialEditandoKey = null;
+
+function abrirModalDiaEspecial(fechaK) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const { curso } = activo;
+
+  // Si no nos pasaron una fecha (botón general), pedimos elegir una desde un mini-selector
+  if (!fechaK) {
+    const fechas = generarFechasClase(curso);
+    // Construir lista de opciones (clase 0..N)
+    const opciones = fechas.map(f => {
+      const k = fechaKey(f);
+      const motivo = diaEspecialMotivo(curso, k);
+      return { k, label: fechaCompleta(f) + (motivo ? ' — ' + motivo : ''), esEspecial: !!motivo };
+    });
+    // Reutilizamos el mismo modal mostrando un selector
+    diaEspecialEditandoKey = null;
+    document.getElementById('dia-especial-titulo').textContent = 'Marcar día como especial';
+    document.getElementById('dia-especial-fecha').innerHTML = `
+      <label style="display:block; margin-bottom:0.3rem;">Fecha del curso</label>
+      <select id="selector-fecha-especial" class="motivo-input" onchange="onSeleccionarFechaEspecial(this.value)">
+        <option value="">— Elegí una fecha —</option>
+        ${opciones.map(o => `<option value="${o.k}" ${o.esEspecial ? 'style="color:var(--info)"' : ''}>${o.label}${o.esEspecial ? ' ★' : ''}</option>`).join('')}
+      </select>
+    `;
+    document.getElementById('input-motivo-especial').value = '';
+    document.getElementById('input-motivo-especial').disabled = true;
+    document.getElementById('btn-desmarcar-especial').style.display = 'none';
+    document.getElementById('modal-dia-especial').classList.add('activo');
+    return;
+  }
+
+  // Llamado desde header de fecha: editar directamente
+  diaEspecialEditandoKey = fechaK;
+  const motivo = diaEspecialMotivo(curso, fechaK);
+  const fecha = new Date(fechaK + 'T00:00:00');
+  document.getElementById('dia-especial-titulo').textContent = motivo
+    ? 'Editar día especial'
+    : 'Marcar día como especial';
+  document.getElementById('dia-especial-fecha').textContent = fechaCompleta(fecha);
+  document.getElementById('input-motivo-especial').value = motivo || '';
+  document.getElementById('input-motivo-especial').disabled = false;
+  document.getElementById('btn-desmarcar-especial').style.display = motivo ? '' : 'none';
+  document.getElementById('modal-dia-especial').classList.add('activo');
+  setTimeout(() => document.getElementById('input-motivo-especial').focus(), 100);
+}
+
+function onSeleccionarFechaEspecial(fechaK) {
+  if (!fechaK) {
+    document.getElementById('input-motivo-especial').disabled = true;
+    document.getElementById('btn-desmarcar-especial').style.display = 'none';
+    return;
+  }
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  diaEspecialEditandoKey = fechaK;
+  const motivo = diaEspecialMotivo(activo.curso, fechaK);
+  document.getElementById('input-motivo-especial').value = motivo || '';
+  document.getElementById('input-motivo-especial').disabled = false;
+  document.getElementById('btn-desmarcar-especial').style.display = motivo ? '' : 'none';
+  document.getElementById('input-motivo-especial').focus();
+}
+
+function guardarDiaEspecial() {
+  if (!diaEspecialEditandoKey) {
+    toast('Elegí una fecha primero');
+    return;
+  }
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const motivo = document.getElementById('input-motivo-especial').value.trim();
+  if (!motivo) {
+    toast('Ingresá el motivo (feriado, excursión, etc.)');
+    return;
+  }
+  if (!activo.curso.diasEspeciales) activo.curso.diasEspeciales = {};
+  activo.curso.diasEspeciales[diaEspecialEditandoKey] = motivo;
+  diaEspecialEditandoKey = null;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Día especial guardado');
+}
+
+function desmarcarDiaEspecial() {
+  if (!diaEspecialEditandoKey) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  if (activo.curso.diasEspeciales) {
+    delete activo.curso.diasEspeciales[diaEspecialEditandoKey];
+  }
+  diaEspecialEditandoKey = null;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Día desmarcado');
+}
+
+// =========================================================
+// MAIL RÁPIDO
+// =========================================================
+function abrirMenuMail(event, alumnoId) {
+  event.stopPropagation();
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+
+  // Si no tiene mail cargado: abrir modal de edición directamente
+  if (!al.email || al.email.trim() === '') {
+    abrirModalEmail(alumnoId);
+    return;
+  }
+
+  // Construir menú
+  const fechas = generarFechasClase(activo.curso);
+  const resumen = calcularResumenAlumno(al, fechas, activo.curso);
+  const trabajosPendientes = activo.curso.trabajos.filter(t => !tieneNotaCargada(al, t));
+  const sinEntregar = trabajosPendientes.length;
+  const enPeligro = sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
+
+  const menu = document.getElementById('mail-menu');
+  let html = `
+    <div class="mail-menu-header">
+      <div>
+        <strong>${escapeHtml(al.nombre)}</strong>
+        <div class="mail-direccion">${escapeHtml(al.email)}</div>
+      </div>
+      <button class="editar-mail" onclick="abrirModalEmail('${al.id}')">Editar</button>
+    </div>
+  `;
+
+  // Plantillas según estado
+  if (resumen.libre) {
+    html += `
+      <button class="mail-menu-item" onclick="enviarMailPlantilla('${al.id}','libre')">
+        <span class="icono">⚠</span>
+        <span class="label">
+          Quedó libre
+          <span class="descripcion">Asistencia ${resumen.pct}% (mínimo ${UMBRAL_LIBRE}%)</span>
+        </span>
+      </button>
+    `;
+  } else if (resumen.total_registros > 0 && resumen.pct < UMBRAL_LIBRE + 10) {
+    // Cerca de quedar libre (hasta 10 puntos arriba del umbral)
+    html += `
+      <button class="mail-menu-item" onclick="enviarMailPlantilla('${al.id}','riesgoLibre')">
+        <span class="icono">⚠</span>
+        <span class="label">
+          Riesgo de quedar libre
+          <span class="descripcion">Asistencia ${resumen.pct}% — cerca del límite</span>
+        </span>
+      </button>
+    `;
+  }
+
+  if (enPeligro) {
+    html += `
+      <button class="mail-menu-item" onclick="enviarMailPlantilla('${al.id}','peligro')">
+        <span class="icono">📋</span>
+        <span class="label">
+          En peligro de desaprobar
+          <span class="descripcion">${sinEntregar} trabajos sin entregar</span>
+        </span>
+      </button>
+    `;
+  } else if (sinEntregar > 0) {
+    html += `
+      <button class="mail-menu-item" onclick="enviarMailPlantilla('${al.id}','trabajos')">
+        <span class="icono">📋</span>
+        <span class="label">
+          Recordatorio de trabajos pendientes
+          <span class="descripcion">${sinEntregar} ${sinEntregar === 1 ? 'trabajo' : 'trabajos'} sin entregar</span>
+        </span>
+      </button>
+    `;
+  }
+
+  // Felicitación si va bien
+  const prom = calcularPromedioAlumno(al, activo.curso.trabajos);
+  if (prom !== null && prom >= 8 && !resumen.libre && !enPeligro) {
+    html += `
+      <button class="mail-menu-item" onclick="enviarMailPlantilla('${al.id}','felicitacion')">
+        <span class="icono">⭐</span>
+        <span class="label">
+          Felicitación por buen rendimiento
+          <span class="descripcion">Promedio ${prom.toFixed(2)} — muy bien</span>
+        </span>
+      </button>
+    `;
+  }
+
+  html += `
+    <div class="mail-menu-separator"></div>
+    <button class="mail-menu-item" onclick="abrirModalMailLibre('${al.id}')">
+      <span class="icono">✏</span>
+      <span class="label">
+        Mensaje libre
+        <span class="descripcion">Escribir asunto y cuerpo manualmente</span>
+      </span>
+    </button>
+  `;
+
+  menu.innerHTML = html;
+
+  // Posicionar cerca del botón
+  const overlay = document.getElementById('mail-menu-overlay');
+  overlay.classList.add('activo');
+
+  // Posición: debajo del botón clickeado
+  const rect = event.currentTarget.getBoundingClientRect();
+  const menuW = 320;
+  let left = rect.left;
+  if (left + menuW > window.innerWidth - 10) left = window.innerWidth - menuW - 10;
+  if (left < 10) left = 10;
+  menu.style.left = left + 'px';
+  menu.style.top = (rect.bottom + 6) + 'px';
+}
+
+function cerrarMenuMail(event) {
+  if (event && event.target !== document.getElementById('mail-menu-overlay')) return;
+  document.getElementById('mail-menu-overlay').classList.remove('activo');
+}
+
+function abrirModalEmail(alumnoId) {
+  cerrarMenuMail();
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  edicionActual.alumnoId = alumnoId;
+  document.getElementById('email-titulo').textContent = `Email de ${al.nombre}`;
+  document.getElementById('input-email-alumno').value = al.email || '';
+  document.getElementById('btn-borrar-email').style.display = al.email ? '' : 'none';
+  document.getElementById('modal-email').classList.add('activo');
+  setTimeout(() => document.getElementById('input-email-alumno').focus(), 100);
+}
+
+function guardarEmailAlumno() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al) return;
+  const email = document.getElementById('input-email-alumno').value.trim();
+  if (email) al.email = email;
+  else delete al.email;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast(email ? 'Email guardado' : 'Email eliminado');
+}
+
+function borrarEmailAlumno() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al) return;
+  delete al.email;
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast('Email eliminado');
+}
+
+// Plantillas de mail
+function plantillasMail(al, curso, escuela) {
+  const fechas = generarFechasClase(curso);
+  const resumen = calcularResumenAlumno(al, fechas, curso);
+  const trabajosPendientes = curso.trabajos.filter(t => !tieneNotaCargada(al, t));
+  const prom = calcularPromedioAlumno(al, curso.trabajos);
+  const cat = prom !== null ? categoriaDeNota(prom) : null;
+  const firma = `\n\nSaludos cordiales,\nDocente de ${curso.nombre}\n${escuela.nombre}`;
+  const saludo = `Hola, ${al.nombre.split(' ')[0]}:`;
+
+  return {
+    libre: {
+      asunto: `${curso.nombre} — Situación de asistencia`,
+      cuerpo: `${saludo}\n\nTe escribo para informarte que, según mi registro de asistencias del curso ${curso.nombre}, llevás ${resumen.pct}% de asistencia, lo cual está por debajo del ${UMBRAL_LIBRE}% requerido para mantener la regularidad.\n\nEsto significa que en este momento estás en condición de libre. Si hay alguna situación particular que esté afectando tu asistencia, te pido que me escribas o coordinemos para hablar.${firma}`
+    },
+    riesgoLibre: {
+      asunto: `${curso.nombre} — Atención: cerca del límite de asistencia`,
+      cuerpo: `${saludo}\n\nTe escribo para avisarte que tu asistencia al curso ${curso.nombre} es actualmente del ${resumen.pct}%, lo cual está cerca del mínimo del ${UMBRAL_LIBRE}% necesario para mantener la regularidad.\n\nTe pido que tengas en cuenta esta situación para no llegar a quedar libre. Si hay algo que pueda ayudarte, no dudes en escribirme.${firma}`
+    },
+    peligro: {
+      asunto: `${curso.nombre} — Trabajos pendientes (importante)`,
+      cuerpo: `${saludo}\n\nTe escribo porque, según mi registro, tenés ${trabajosPendientes.length} trabajos sin entregar en el curso ${curso.nombre}:\n\n${trabajosPendientes.map(t => '  • ' + t.nombre).join('\n')}\n\nEsta cantidad de trabajos pendientes pone en riesgo tu promoción del curso. Te pido que te pongas al día con las entregas pendientes lo antes posible.\n\nSi necesitás más tiempo o alguna consulta, escribime para coordinar.${firma}`
+    },
+    trabajos: {
+      asunto: `${curso.nombre} — Recordatorio de entregas pendientes`,
+      cuerpo: `${saludo}\n\nTe escribo para recordarte que tenés ${trabajosPendientes.length} ${trabajosPendientes.length === 1 ? 'trabajo' : 'trabajos'} sin entregar en el curso ${curso.nombre}:\n\n${trabajosPendientes.map(t => '  • ' + t.nombre).join('\n')}\n\nTe pido que veas cuándo podés entregarlo${trabajosPendientes.length === 1 ? '' : 's'}.${firma}`
+    },
+    felicitacion: {
+      asunto: `${curso.nombre} — ¡Excelente trabajo!`,
+      cuerpo: `${saludo}\n\nQuería tomarme un momento para felicitarte por tu rendimiento en el curso ${curso.nombre}.${prom !== null ? ` Tu promedio actual es ${prom.toFixed(2)} (${cat ? cat.label : ''}),` : ''} se nota el esfuerzo y la dedicación que estás poniendo.\n\nSeguí así.${firma}`
+    }
+  };
+}
+
+function enviarMailPlantilla(alumnoId, plantillaId) {
+  cerrarMenuMail();
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al || !al.email) return;
+  const plantillas = plantillasMail(al, activo.curso, activo.escuela);
+  const p = plantillas[plantillaId];
+  if (!p) return;
+  abrirCompositorMail(al.email, p.asunto, p.cuerpo);
+}
+
+function abrirCompositorMail(destinatario, asunto, cuerpo) {
+  const url = 'mailto:' + encodeURIComponent(destinatario) +
+    '?subject=' + encodeURIComponent(asunto) +
+    '&body=' + encodeURIComponent(cuerpo);
+  window.location.href = url;
+}
+
+function abrirModalMailLibre(alumnoId) {
+  cerrarMenuMail();
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al || !al.email) return;
+  edicionActual.alumnoId = alumnoId;
+  document.getElementById('mail-libre-titulo').textContent = `Mail a ${al.nombre}`;
+  document.getElementById('mail-libre-sub').textContent = `Se enviará a: ${al.email}`;
+  document.getElementById('input-mail-asunto').value = `${activo.curso.nombre} — `;
+  document.getElementById('input-mail-cuerpo').value = `Hola, ${al.nombre.split(' ')[0]}:\n\n`;
+  document.getElementById('modal-mail-libre').classList.add('activo');
+  setTimeout(() => document.getElementById('input-mail-cuerpo').focus(), 100);
+}
+
+function abrirMailDesdeModal() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === edicionActual.alumnoId);
+  if (!al || !al.email) return;
+  const asunto = document.getElementById('input-mail-asunto').value;
+  const cuerpo = document.getElementById('input-mail-cuerpo').value;
+  abrirCompositorMail(al.email, asunto, cuerpo);
+  cerrarModales();
+}
+
+function cambiarTab(tab) {
+  estado.tabActiva = tab;
+  guardarEstado();
+  renderMain();
+}
+
+// =========================================================
+// EXPORTAR EXCEL
+// =========================================================
+function exportarExcel() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const { escuela, curso } = activo;
+  const fechas = generarFechasClase(curso);
+
+  const wb = XLSX.utils.book_new();
+
+  // ---- Hoja Asistencias ----
+  const headAsist = [
+    'Alumno',
+    ...fechas.map(f => `${f.getDate()}-${MESES_NOMBRES[f.getMonth()]}-${f.getFullYear()}`),
+    '% Asistencia',
+    'Estado'
+  ];
+  // Fila adicional con los motivos de días especiales
+  const filaMotivos = [
+    'Día especial:',
+    ...fechas.map(f => {
+      const m = diaEspecialMotivo(curso, fechaKey(f));
+      return m ? '★ ' + m : '';
+    }),
+    '',
+    ''
+  ];
+  const rowsAsist = curso.alumnos.map(al => {
+    const row = [al.nombre];
+    fechas.forEach(f => {
+      const k = fechaKey(f);
+      const esp = diaEspecialMotivo(curso, k);
+      if (esp) {
+        row.push('★');
+      } else {
+        row.push(al.asistencias?.[k] || '');
+      }
+    });
+    const r = calcularResumenAlumno(al, fechas, curso);
+    row.push(r.total_registros > 0 ? r.pct / 100 : '');
+    row.push(r.libre ? 'LIBRE' : (r.total_registros > 0 ? 'Regular' : '—'));
+    return row;
+  });
+  const wsAsist = XLSX.utils.aoa_to_sheet([
+    [escuela.nombre + ' — ' + curso.nombre],
+    ['Asistencias del ' + curso.inicio + ' al ' + curso.fin],
+    ['P = Presente, A = Ausente, J = Justificado, T = Tarde, ★ = Día especial (no cuenta para %). Libre con < ' + UMBRAL_LIBRE + '% de asistencia.'],
+    [],
+    headAsist,
+    filaMotivos,
+    ...rowsAsist
+  ]);
+  // Formato % a la columna de %
+  const colPct = fechas.length + 1;
+  for (let r = 6; r < 6 + rowsAsist.length; r++) {
+    const cell = wsAsist[XLSX.utils.encode_cell({ r, c: colPct })];
+    if (cell && typeof cell.v === 'number') cell.z = '0%';
+  }
+  wsAsist['!cols'] = [{ wch: 28 }, ...fechas.map(() => ({ wch: 11 })), { wch: 14 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, wsAsist, 'Asistencias');
+
+  // ---- Hoja Notas ----
+  // Por cada trabajo: dos columnas (nota numérica + valorativa)
+  const headNotas = ['Alumno'];
+  curso.trabajos.forEach(t => {
+    const sufijo = t.criterios && t.criterios.length > 0 ? ' (rúbrica)' : '';
+    headNotas.push(t.nombre + sufijo);
+    headNotas.push('Valorativa');
+  });
+  headNotas.push('Promedio', 'Categoría', 'Trabajos pendientes', 'Estado', 'Mensaje de cierre');
+
+  const rowsNotas = curso.alumnos.map(al => {
+    const row = [al.nombre];
+    curso.trabajos.forEach(t => {
+      const nota = calcularNotaTrabajo(al, t);
+      const cat = categoriaDeNota(nota);
+      row.push(nota !== null ? Number(nota.toFixed(2)) : '');
+      row.push(cat ? cat.label : '');
+    });
+    const prom = calcularPromedioAlumno(al, curso.trabajos);
+    const cat = prom !== null ? categoriaDeNota(prom) : null;
+    const sinEntregar = curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length;
+    const enPeligro = sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
+
+    row.push(prom !== null ? Number(prom.toFixed(2)) : '');
+    row.push(cat ? cat.label : '');
+    row.push(sinEntregar);
+    row.push(enPeligro ? 'EN PELIGRO' : (prom !== null ? (prom >= 6 ? 'Aprobado' : 'Desaprobado') : '—'));
+    row.push(al.incentivo || '');
+    return row;
+  });
+  const wsNotas = XLSX.utils.aoa_to_sheet([
+    [escuela.nombre + ' — ' + curso.nombre],
+    ['Notas y promedios por alumno'],
+    ['Escala: Regular 1-5, Bien 6-7, Muy bien 8-9, Excelente 10. En peligro: más de ' + UMBRAL_PELIGRO_TRABAJOS + ' trabajos sin entregar.'],
+    [],
+    headNotas,
+    ...rowsNotas
+  ]);
+  const colsNotas = [{ wch: 28 }];
+  curso.trabajos.forEach(() => { colsNotas.push({ wch: 12 }); colsNotas.push({ wch: 12 }); });
+  colsNotas.push({ wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 40 });
+  wsNotas['!cols'] = colsNotas;
+  XLSX.utils.book_append_sheet(wb, wsNotas, 'Notas');
+
+  // ---- Hoja Rúbricas (si hay trabajos con criterios) ----
+  const conRubrica = curso.trabajos.filter(t => t.criterios && t.criterios.length > 0);
+  if (conRubrica.length > 0) {
+    const filasRub = [
+      [escuela.nombre + ' — ' + curso.nombre],
+      ['Detalle de rúbricas y notas por criterio'],
+      []
+    ];
+    conRubrica.forEach(t => {
+      filasRub.push([`▸ ${t.nombre}`]);
+      filasRub.push(['Alumno', ...t.criterios.map(c => `${c.nombre} (peso ${c.peso})`), 'Nota final', 'Valorativa']);
+      curso.alumnos.forEach(al => {
+        const row = [al.nombre];
+        t.criterios.forEach(c => {
+          const v = al.notas?.[t.id]?.[c.id];
+          row.push(v !== undefined && v !== null && v !== '' ? Number(v) : '');
+        });
+        const nota = calcularNotaTrabajo(al, t);
+        const cat = categoriaDeNota(nota);
+        row.push(nota !== null ? Number(nota.toFixed(2)) : '');
+        row.push(cat ? cat.label : '');
+        filasRub.push(row);
+      });
+      filasRub.push([]);
+    });
+    const wsRub = XLSX.utils.aoa_to_sheet(filasRub);
+    wsRub['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsRub, 'Rúbricas');
+  }
+
+  // ---- Hoja Mensajes ----
+  const alumnosConMensaje = curso.alumnos.filter(a => a.incentivo && a.incentivo.trim());
+  if (alumnosConMensaje.length > 0) {
+    const filasMsg = [
+      [escuela.nombre + ' — ' + curso.nombre],
+      ['Mensajes de cierre por alumno'],
+      [],
+      ['Alumno', 'Mensaje']
+    ];
+    alumnosConMensaje.forEach(al => filasMsg.push([al.nombre, al.incentivo]));
+    const wsMsg = XLSX.utils.aoa_to_sheet(filasMsg);
+    wsMsg['!cols'] = [{ wch: 28 }, { wch: 80 }];
+    XLSX.utils.book_append_sheet(wb, wsMsg, 'Mensajes');
+  }
+
+  const nombreArchivo = `${escuela.nombre}_${curso.nombre}`.replace(/[^a-záéíóúüñA-ZÁÉÍÓÚÜÑ0-9_-]+/g, '_') + '.xlsx';
+  XLSX.writeFile(wb, nombreArchivo);
+  toast('Excel descargado');
+}
+
+// =========================================================
+// BACKUP JSON
+// =========================================================
+function exportarTodo() {
+  const blob = new Blob([JSON.stringify(estado, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'gestor-clases-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup descargado');
+}
+
+function importarTodo(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      estado = { ...estado, ...data };
+      guardarEstado();
+      renderSidebar();
+      renderMain();
+      toast('Datos importados');
+    } catch (err) {
+      toast('Archivo inválido: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// =========================================================
+// UTILIDADES
+// =========================================================
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove('visible'), 2400);
+}
+
+// Cerrar modales con ESC o click fuera
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cerrarModales();
+});
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', (e) => {
+    if (e.target === o) cerrarModales();
+  });
+});
+
+// Día selector toggles
+document.querySelectorAll('.dia-toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('activo'));
+});
+
+// =========================================================
+// GOOGLE DRIVE (sincronización opcional)
+// =========================================================
+// Para activar la sincronización:
+// 1. Ir a https://console.cloud.google.com/
+// 2. Crear un proyecto nuevo
+// 3. Activar "Google Drive API" en "APIs y servicios"
+// 4. En "Credenciales", crear un "ID de cliente de OAuth 2.0" tipo "Aplicación web"
+// 5. Agregar el dominio donde vas a publicar el archivo (ej: https://tuusuario.github.io)
+//    a los "Orígenes JavaScript autorizados"
+// 6. Copiar el Client ID que termina en .apps.googleusercontent.com
+// 7. Pegarlo en la constante GOOGLE_CLIENT_ID de acá abajo
+// 8. Subir el archivo a GitHub Pages / Vercel / Netlify (todos gratis)
+// IMPORTANTE: file:// (doble clic) NO funciona con OAuth, hay que publicarlo.
+
+const GOOGLE_CLIENT_ID = ''; // ← PEGAR ACÁ EL CLIENT ID
+const DRIVE_FILE_NAME = 'gestor-clases-datos.json';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+let googleState = {
+  configurado: false,
+  conectado: false,
+  email: null,
+  token: null,
+  fileId: null,
+  guardandoEnDrive: false,
+  ultimaSincro: null,
+  gisListo: false
+};
+
+function inicializarGoogle() {
+  googleState.configurado = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com');
+  // Restaurar email y fileId guardados (NO el token, que expira en 1h)
+  try {
+    const raw = localStorage.getItem('google-session');
+    if (raw) {
+      const s = JSON.parse(raw);
+      googleState.email = s.email;
+      googleState.fileId = s.fileId;
+      googleState.ultimaSincro = s.ultimaSincro;
+      googleState.necesitaReconectar = !!s.email; // Marca que había sesión previa
+    }
+  } catch(e) {}
+
+  if (googleState.configurado) {
+    cargarScriptGoogle();
+  }
+  renderCuentaGoogle();
+}
+
+function cargarScriptGoogle() {
+  if (window.google?.accounts?.oauth2) {
+    googleState.gisListo = true;
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.onload = () => {
+    googleState.gisListo = true;
+  };
+  document.head.appendChild(script);
+}
+
+function guardarSesionGoogle() {
+  localStorage.setItem('google-session', JSON.stringify({
+    email: googleState.email,
+    fileId: googleState.fileId,
+    ultimaSincro: googleState.ultimaSincro
+  }));
+}
+
+function renderCuentaGoogle() {
+  const cont = document.getElementById('cuenta-google-container');
+  if (!cont) return;
+
+  if (!googleState.configurado) {
+    cont.innerHTML = `
+      <div class="cuenta-google">
+        <div class="estado-cuenta">
+          <span class="punto"></span>
+          <span>Google Drive: no configurado</span>
+        </div>
+        <button onclick="mostrarModalGoogle()">Cómo activar</button>
+      </div>
+    `;
+    return;
+  }
+
+  if (googleState.conectado) {
+    const ultima = googleState.ultimaSincro
+      ? new Date(googleState.ultimaSincro).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+      : 'nunca';
+    cont.innerHTML = `
+      <div class="cuenta-google conectada">
+        <div class="estado-cuenta">
+          <span class="punto"></span>
+          <span>Sincronizado</span>
+        </div>
+        <div class="email-google">${escapeHtml(googleState.email || '—')}</div>
+        <div style="font-size:0.66rem; color:var(--texto-tenue); margin-bottom:0.4rem;">
+          Última sincro: ${ultima}
+        </div>
+        <button onclick="sincronizarConDrive(true)" ${googleState.guardandoEnDrive ? 'disabled' : ''} data-tip="Forzar guardado y descarga inmediata">
+          ${googleState.guardandoEnDrive ? 'Sincronizando…' : '↻ Sincronizar ahora'}
+        </button>
+        <button onclick="desconectarGoogle()" data-tip="Cerrar sesión (los datos permanecen en este navegador)">
+          Desconectar
+        </button>
+      </div>
+    `;
+  } else {
+    // No conectado en este momento. Si había sesión previa, ofrecer reconexión rápida.
+    if (googleState.necesitaReconectar && googleState.email) {
+      cont.innerHTML = `
+        <div class="cuenta-google">
+          <div class="estado-cuenta">
+            <span class="punto" style="background:var(--warn);"></span>
+            <span>Reconectar</span>
+          </div>
+          <div class="email-google">${escapeHtml(googleState.email)}</div>
+          <button onclick="conectarGoogle()">Reconectar Drive</button>
+          <button onclick="desconectarGoogle()" style="background:transparent; border:0; color:var(--texto-tenue); margin-top:0.2rem;">Olvidar cuenta</button>
+        </div>
+      `;
+    } else {
+      cont.innerHTML = `
+        <div class="cuenta-google">
+          <div class="estado-cuenta">
+            <span class="punto"></span>
+            <span>Google Drive: desconectado</span>
+          </div>
+          <button onclick="conectarGoogle()">Conectar con Google</button>
+          <button onclick="mostrarModalGoogle()" style="background:transparent; border:0; color:var(--texto-tenue); margin-top:0.2rem;">¿Cómo funciona?</button>
+        </div>
+      `;
+    }
+  }
+}
+
+function mostrarModalGoogle() {
+  const cont = document.getElementById('google-contenido');
+  if (!googleState.configurado) {
+    cont.innerHTML = `
+      <div class="rubrica-info" style="background:var(--warn-suave); color:var(--warn); border-left-color:var(--warn);">
+        <strong>La sincronización aún no está activada.</strong> Para activarla necesitás configurar el acceso a Google Drive una sola vez. Es gratis y queda asociado a tu cuenta de Google.
+      </div>
+
+      <h4 style="margin-top:1rem; margin-bottom:0.4rem; font-size:0.95rem;">Por qué hace falta configurar algo</h4>
+      <p style="font-size:0.85rem; color:var(--texto-suave); margin:0 0 0.8rem;">
+        Google exige que cada aplicación que accede a Drive sea registrada en su consola de desarrolladores. No se puede saltar este paso. La configuración es de una sola vez y queda guardada.
+      </p>
+
+      <h4 style="margin-top:1rem; margin-bottom:0.4rem; font-size:0.95rem;">Pasos para activarla</h4>
+      <ol style="font-size:0.85rem; color:var(--texto-suave); padding-left:1.2rem; line-height:1.6; margin:0 0 0.8rem;">
+        <li>Subir este archivo HTML a <strong>GitHub Pages</strong> (o Netlify, Vercel — todos gratis). No funciona abriéndolo con doble clic, necesita estar en internet con HTTPS.</li>
+        <li>Entrar a <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--acento);">console.cloud.google.com</a> con tu cuenta de Google.</li>
+        <li>Crear un proyecto nuevo (nombre libre).</li>
+        <li>En "APIs y servicios" → "Biblioteca" → activar <strong>"Google Drive API"</strong>.</li>
+        <li>En "APIs y servicios" → "Credenciales" → crear <strong>ID de cliente de OAuth 2.0</strong> tipo "Aplicación web".</li>
+        <li>En "Orígenes JavaScript autorizados", agregar la URL donde subiste el archivo (ej: <code style="background:var(--fondo-alt); padding:0.1rem 0.3rem; border-radius:3px;">https://tuusuario.github.io</code>).</li>
+        <li>Copiar el "ID de cliente" que termina en <code style="background:var(--fondo-alt); padding:0.1rem 0.3rem; border-radius:3px;">.apps.googleusercontent.com</code>.</li>
+        <li>Abrir el archivo HTML en un editor, buscar la línea <code style="background:var(--fondo-alt); padding:0.1rem 0.3rem; border-radius:3px;">const GOOGLE_CLIENT_ID = '';</code> (cerca del final del &lt;script&gt;), pegar el ID entre las comillas y guardar.</li>
+        <li>Subir el archivo actualizado a GitHub Pages.</li>
+      </ol>
+
+      <div class="rubrica-info" style="background:var(--acento-suave); margin-top:0.8rem;">
+        <strong>Alternativa más simple:</strong> usá los botones "⬇ Backup JSON" / "⬆ Importar JSON" del sidebar para mover los datos entre dispositivos manualmente. Guardás el JSON en tu Drive personal y lo abrís donde necesites. No requiere ninguna configuración.
+      </div>
+
+      <div class="modal-acciones">
+        <button class="btn btn-primario" onclick="cerrarModales()">Entendido</button>
+      </div>
+    `;
+  } else if (googleState.conectado) {
+    cont.innerHTML = `
+      <div class="rubrica-info" style="background:var(--ok-suave); color:var(--ok); border-left-color:var(--ok);">
+        <strong>Sincronización activa.</strong> Tus datos se guardan en una carpeta privada de tu Google Drive y se sincronizan automáticamente.
+      </div>
+      <p style="font-size:0.85rem; color:var(--texto-suave);">
+        Cuenta: <strong>${escapeHtml(googleState.email)}</strong><br>
+        Última sincronización: ${googleState.ultimaSincro ? new Date(googleState.ultimaSincro).toLocaleString('es-AR') : 'nunca'}
+      </p>
+      <p style="font-size:0.82rem; color:var(--texto-suave);">
+        Para usar la misma base desde otro dispositivo: abrí la misma URL en ese dispositivo y conectate con la misma cuenta de Google. La base se descarga automáticamente.
+      </p>
+      <div class="modal-acciones">
+        <button class="btn" onclick="cerrarModales()">Cerrar</button>
+      </div>
+    `;
+  } else {
+    cont.innerHTML = `
+      <div class="rubrica-info">
+        Conectá tu cuenta de Google para guardar tu base de datos en Google Drive y poder acceder desde otros dispositivos (celular, tablet, otra PC).
+      </div>
+      <ul style="font-size:0.85rem; color:var(--texto-suave); padding-left:1.2rem; line-height:1.7;">
+        <li>Los datos quedan en una carpeta <strong>privada</strong> de tu Drive (no visible en la lista general).</li>
+        <li>Solo vos podés verlos. Esta app no los lee ni los envía a ningún otro lado.</li>
+        <li>Si abrís este mismo enlace desde otro dispositivo y te conectás con la misma cuenta, ves tu base.</li>
+        <li>Si te desconectás, los datos siguen guardados en este navegador.</li>
+      </ul>
+      <div class="modal-acciones">
+        <button class="btn" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-primario" onclick="cerrarModales(); conectarGoogle()">Conectar con Google</button>
+      </div>
+    `;
+  }
+  document.getElementById('modal-google').classList.add('activo');
+}
+
+function conectarGoogle() {
+  if (!googleState.configurado) {
+    mostrarModalGoogle();
+    return;
+  }
+  if (!googleState.gisListo) {
+    toast('Esperando a que cargue Google… probá de nuevo en un segundo');
+    return;
+  }
+  const esReconexion = !!googleState.necesitaReconectar;
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (response) => {
+      if (response.error) {
+        toast('No se pudo conectar: ' + response.error);
+        return;
+      }
+      googleState.token = response.access_token;
+      // Obtener email del usuario (solo si no lo teníamos guardado)
+      if (!googleState.email) {
+        try {
+          const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${googleState.token}` }
+          }).then(r => r.json());
+          googleState.email = userInfo.email;
+        } catch(e) {
+          googleState.email = 'cuenta conectada';
+        }
+      }
+      googleState.conectado = true;
+      googleState.necesitaReconectar = false;
+      guardarSesionGoogle();
+      renderCuentaGoogle();
+      toast(esReconexion ? 'Reconectado a Drive' : 'Conectado a Google Drive');
+      // Tras conectar, buscar la base existente y mergear
+      await sincronizarConDrive(true);
+    }
+  });
+  // En reconexión, no pedimos consent (ya fue dado antes)
+  tokenClient.requestAccessToken({ prompt: esReconexion ? '' : 'consent' });
+}
+
+function desconectarGoogle() {
+  if (!confirm('¿Desconectar Google Drive? Los datos quedan guardados en este navegador.')) return;
+  if (googleState.token) {
+    try { google.accounts.oauth2.revoke(googleState.token, () => {}); } catch(e) {}
+  }
+  googleState.conectado = false;
+  googleState.token = null;
+  googleState.email = null;
+  googleState.fileId = null;
+  googleState.ultimaSincro = null;
+  googleState.necesitaReconectar = false;
+  localStorage.removeItem('google-session');
+  renderCuentaGoogle();
+  toast('Desconectado');
+}
+
+async function driveApi(path, opts = {}) {
+  const url = path.startsWith('http') ? path : 'https://www.googleapis.com' + path;
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      Authorization: `Bearer ${googleState.token}`
+    }
+  });
+  if (res.status === 401) {
+    googleState.conectado = false;
+    googleState.token = null;
+    renderCuentaGoogle();
+    throw new Error('Sesión vencida. Volvé a conectar con Google.');
+  }
+  return res;
+}
+
+async function buscarArchivoEnDrive() {
+  const res = await driveApi(
+    `/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent("name = '" + DRIVE_FILE_NAME + "'")}&fields=files(id,name,modifiedTime)`
+  );
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    return data.files[0];
+  }
+  return null;
+}
+
+async function leerArchivoDeDrive(fileId) {
+  const res = await driveApi(`/drive/v3/files/${fileId}?alt=media`);
+  if (!res.ok) throw new Error('No se pudo leer el archivo de Drive');
+  return res.json();
+}
+
+async function subirArchivoADrive(fileId, contenido) {
+  const body = JSON.stringify(contenido);
+  if (fileId) {
+    // Actualizar archivo existente
+    const res = await driveApi(
+      `/upload/drive/v3/files/${fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      }
+    );
+    if (!res.ok) throw new Error('Error al actualizar en Drive');
+    return res.json();
+  } else {
+    // Crear archivo nuevo en appDataFolder
+    const boundary = '-------drive-boundary-' + Date.now();
+    const metadata = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+    const multipartBody =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(metadata) + '\r\n' +
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+      body + '\r\n' +
+      `--${boundary}--`;
+    const res = await driveApi(
+      '/upload/drive/v3/files?uploadType=multipart',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body: multipartBody
+      }
+    );
+    if (!res.ok) throw new Error('Error al crear archivo en Drive');
+    return res.json();
+  }
+}
+
+async function sincronizarConDrive(forzar) {
+  if (!googleState.conectado || !googleState.token) return;
+  if (googleState.guardandoEnDrive) return;
+  googleState.guardandoEnDrive = true;
+  renderCuentaGoogle();
+
+  try {
+    // 1. Buscar archivo en Drive si todavía no lo tenemos
+    const eraNuevaConexion = !googleState.fileId;
+    if (!googleState.fileId) {
+      const existente = await buscarArchivoEnDrive();
+      if (existente) googleState.fileId = existente.id;
+    }
+
+    // 2. Si es la primera conexión Y hay archivo en Drive, decidir qué hacer
+    const datosLocalesVacios = !estado.escuelas || estado.escuelas.length === 0;
+    if (googleState.fileId && eraNuevaConexion) {
+      try {
+        const remoto = await leerArchivoDeDrive(googleState.fileId);
+        if (remoto && remoto.escuelas && remoto.escuelas.length > 0) {
+          let reemplazar = false;
+          if (datosLocalesVacios) {
+            reemplazar = true; // Nada para perder, bajamos
+          } else {
+            // Hay datos locales Y datos en Drive: el usuario decide
+            reemplazar = confirm(
+              'Encontramos una base de datos guardada en tu Google Drive.\n\n' +
+              '¿Querés reemplazar los datos de este dispositivo con los de Drive?\n\n' +
+              '• Aceptar: descarga los datos de Drive y reemplaza los actuales.\n' +
+              '• Cancelar: mantiene los datos actuales y los sube a Drive (sobrescribe lo que hay).'
+            );
+          }
+          if (reemplazar) {
+            estado.escuelas = remoto.escuelas;
+            estado.cursoActivoId = remoto.cursoActivoId || null;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch(e) {}
+            renderSidebar();
+            renderMain();
+          }
+        }
+      } catch(e) {
+        console.error('Error leyendo de Drive:', e);
+      }
+    }
+
+    // 3. Subir estado actual
+    const contenidoSubir = {
+      escuelas: estado.escuelas,
+      cursoActivoId: estado.cursoActivoId,
+      ultimaSubida: new Date().toISOString()
+    };
+    const resultado = await subirArchivoADrive(googleState.fileId, contenidoSubir);
+    if (resultado.id) googleState.fileId = resultado.id;
+    googleState.ultimaSincro = new Date().toISOString();
+    guardarSesionGoogle();
+    if (forzar === true) toast('Sincronizado con Drive');
+  } catch(e) {
+    toast('Error de sincro: ' + e.message);
+  } finally {
+    googleState.guardandoEnDrive = false;
+    renderCuentaGoogle();
+  }
+}
+
+// Hook: cuando se guarda estado local, también dispara sincronización con debounce
+let sincroTimer = null;
+function programarSincroDrive() {
+  if (!googleState.conectado) return;
+  clearTimeout(sincroTimer);
+  sincroTimer = setTimeout(() => sincronizarConDrive(false), 4000); // 4 segundos de debounce
+}
+
+// =========================================================
+// INIT
+// =========================================================
+cargarEstado();
+renderSidebar();
+renderMain();
+inicializarGoogle();
+</script>
+</body>
+</html>
