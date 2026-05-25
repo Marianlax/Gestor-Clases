@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestor de Clases · Boceto</title>
+<meta name="description" content="Gestor de Clases — administración de asistencias, notas y comunicación con alumnos para docentes.">
+<meta name="theme-color" content="#0f766e">
+<title>Gestor de Clases</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f766e'/><text x='50%25' y='52%25' font-size='18' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,sans-serif' fill='white'>📚</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -232,6 +235,12 @@ body {
 .curso-item:hover .borrar-mini,
 .curso-item.activo .borrar-mini { opacity: 0.7; }
 .curso-item .borrar-mini:hover { opacity: 1; }
+
+.curso-item .acciones-curso-mini {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: center;
+}
 
 .btn-add {
   background: transparent;
@@ -478,6 +487,14 @@ td.col-alumno {
   border-right: 1px solid var(--borde);
   min-width: 180px;
 }
+/* Cuando se hace hover sobre la fila o sobre la celda fija, elevamos su z-index
+   para que los tooltips de los botones internos puedan salir por encima de
+   las otras celdas del thead y de la tabla. */
+tbody tr:hover td.col-alumno,
+td.col-alumno:hover,
+td.col-alumno:focus-within {
+  z-index: 50;
+}
 tbody tr:nth-child(even) td.col-alumno { background: var(--fondo-alt); }
 tbody tr:nth-child(even) td { background: var(--fondo-alt); }
 tbody tr:hover td { background: var(--acento-suave); }
@@ -635,6 +652,24 @@ th.col-trabajo button.borrar-trabajo:hover { color: var(--bad); }
   border-top-color: var(--texto);
   z-index: 100;
 }
+
+/* Variante: tooltip hacia abajo. Útil cuando el elemento está cerca del borde superior */
+[data-tip][data-tip-pos="down"]::before {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform: translate(-50%, -4px);
+}
+[data-tip][data-tip-pos="down"]::after {
+  bottom: auto;
+  top: calc(100% + 2px);
+  border-top-color: transparent;
+  border-bottom-color: var(--texto);
+}
+[data-tip][data-tip-pos="down"]:hover::before,
+[data-tip][data-tip-pos="down"]:focus-visible::before {
+  transform: translate(-50%, 0);
+}
+
 [data-tip]:hover::before, [data-tip]:hover::after,
 [data-tip]:focus-visible::before, [data-tip]:focus-visible::after {
   opacity: 1;
@@ -938,6 +973,15 @@ tbody tr:nth-child(even) td.celda-asistencia.dia-especial { background: var(--in
   cursor: pointer;
 }
 .toolbar-grupo select:focus { outline: none; }
+/* Las <option> heredan mal en modo oscuro porque el popup nativo del navegador
+   suele usar fondo blanco por defecto. Forzamos colores legibles en ambos modos. */
+.toolbar-grupo select option,
+.modal select option,
+select option {
+  background: var(--fondo-panel);
+  color: var(--texto);
+  font-weight: 500;
+}
 .toolbar-info {
   font-size: 0.78rem;
   color: var(--texto-tenue);
@@ -999,6 +1043,7 @@ tbody tr:hover td.col-mensaje { background: var(--acento-suave); }
   border-radius: var(--radio-sm);
   transition: color var(--t-rapido);
   word-break: break-word;
+  white-space: pre-wrap;
 }
 .celda-mensaje-content:hover { color: var(--acento); }
 .celda-mensaje-content.vacio {
@@ -1134,6 +1179,43 @@ tr:hover .btn-mail.tiene-mail { opacity: 1; }
   transition: all var(--t-rapido);
 }
 .mail-menu-header button.editar-mail:hover { color: var(--acento); background: var(--acento-suave); }
+
+/* Selector de cliente de mail (Gmail / Outlook / Otro) */
+.mail-cliente-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+}
+.mail-cliente-selector .cliente-label {
+  color: var(--texto-tenue);
+  margin-right: 0.2rem;
+  font-weight: 500;
+}
+.mail-cliente-selector .cliente-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--texto-suave);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--t-rapido);
+  flex: 1;
+}
+.mail-cliente-selector .cliente-btn:hover {
+  border-color: var(--borde-fuerte);
+  color: var(--texto);
+}
+.mail-cliente-selector .cliente-btn.activo {
+  background: var(--acento);
+  color: #fff;
+  border-color: var(--acento);
+}
 
 .mail-menu-item {
   display: flex;
@@ -1293,6 +1375,8 @@ tr:hover .acciones-alumno { opacity: 1; }
   padding: 1.5rem;
   max-width: 480px;
   width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
   box-shadow: var(--sombra-lg);
   transform: translateY(20px) scale(0.98);
   transition: transform var(--t-medio);
@@ -1308,7 +1392,10 @@ tr:hover .acciones-alumno { opacity: 1; }
   font-weight: 500;
 }
 .modal label:first-of-type { margin-top: 0; }
-.modal input[type="text"], .modal input[type="number"] {
+.modal input[type="text"],
+.modal input[type="number"],
+.modal input[type="email"],
+.modal input[type="date"] {
   width: 100%;
   padding: 0.5rem 0.7rem;
   border: 1px solid var(--borde-fuerte);
@@ -1317,6 +1404,14 @@ tr:hover .acciones-alumno { opacity: 1; }
   border-radius: var(--radio-sm);
   font-size: var(--fs-base);
   transition: border-color var(--t-rapido);
+  font-family: inherit;
+}
+/* Forzar color del ícono del calendario en input[type=date] en modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .modal input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+  }
 }
 .modal input:focus { border-color: var(--acento); }
 .dias-selector {
@@ -1402,6 +1497,12 @@ tr:hover .acciones-alumno { opacity: 1; }
   }
   .main { padding: var(--sp-md) var(--sp-sm); }
   .curso-header h2 { font-size: 1.3rem; }
+  /* En pantallas chicas el menú de mail puede quedar muy ancho.
+     Limitamos al viewport menos un margen mínimo. */
+  .mail-menu { min-width: min(280px, calc(100vw - 20px)); }
+  /* La toolbar de filtros en mobile, que se ponga en columna si no entra */
+  .toolbar { gap: 0.35rem; }
+  .toolbar-info { width: 100%; margin-left: 0; margin-top: 0.2rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1421,7 +1522,7 @@ tr:hover .acciones-alumno { opacity: 1; }
       <div class="logo">📚</div>
       <div>
         <h1>Gestor de Clases</h1>
-        <p class="subtitulo">Boceto · v0.1</p>
+        <p class="subtitulo">v1.0</p>
       </div>
     </div>
 
@@ -1443,10 +1544,6 @@ tr:hover .acciones-alumno { opacity: 1; }
         <button class="btn-add-mini" onclick="document.getElementById('import-input').click()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%; margin-top:0.3rem;" data-tip="Restaurar desde un archivo JSON exportado previamente">⬆ Importar JSON</button>
         <input type="file" id="import-input" accept=".json" style="display:none" onchange="importarTodo(event)">
       </div>
-
-      <div style="margin-top:0.6rem; text-align:center; opacity:0.8;">
-        Datos en este navegador
-      </div>
     </div>
   </aside>
 
@@ -1457,20 +1554,20 @@ tr:hover .acciones-alumno { opacity: 1; }
 <!-- Modal Escuela -->
 <div class="modal-overlay" id="modal-escuela">
   <div class="modal">
-    <h3>Nueva escuela</h3>
+    <h3 id="escuela-titulo">Nueva escuela</h3>
     <label>Nombre de la escuela</label>
     <input type="text" id="input-escuela-nombre" placeholder="Ej: Escuela N°4 San Martín" autocomplete="off">
     <div class="modal-acciones">
       <button class="btn" onclick="cerrarModales()">Cancelar</button>
-      <button class="btn btn-primario" onclick="guardarEscuela()">Crear</button>
+      <button class="btn btn-primario" onclick="guardarEscuela()" id="btn-guardar-escuela">Crear</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Curso -->
 <div class="modal-overlay" id="modal-curso">
-  <div class="modal">
-    <h3>Nuevo curso</h3>
+  <div class="modal modal-grande">
+    <h3 id="curso-titulo">Nuevo curso</h3>
     <label>Nombre del curso</label>
     <input type="text" id="input-curso-nombre" placeholder="Ej: 3°B Matemática" autocomplete="off">
 
@@ -1487,17 +1584,27 @@ tr:hover .acciones-alumno { opacity: 1; }
     <div class="modal-rango">
       <div>
         <label>Inicio del ciclo</label>
-        <input type="text" id="input-curso-anio-inicio" value="" placeholder="Ej: 2026-03-01">
+        <input type="date" id="input-curso-anio-inicio" value="" placeholder="AAAA-MM-DD">
       </div>
       <div>
         <label>Fin del ciclo</label>
-        <input type="text" id="input-curso-anio-fin" value="" placeholder="Ej: 2026-12-15">
+        <input type="date" id="input-curso-anio-fin" value="" placeholder="AAAA-MM-DD">
       </div>
     </div>
 
+    <label>Horario (opcional)</label>
+    <input type="text" id="input-curso-horario" placeholder="Ej: 8:00 a 9:30 hs" autocomplete="off">
+
+    <label>Aula / sede (opcional)</label>
+    <input type="text" id="input-curso-aula" placeholder="Ej: Aula 12, planta baja" autocomplete="off">
+
+    <label>Notas internas (opcional)</label>
+    <textarea id="input-curso-notas" placeholder="Cualquier comentario privado sobre este curso (no se muestra al alumno)." style="min-height: 60px;"></textarea>
+
     <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="borrarCursoDesdeModal()" id="btn-borrar-curso" style="margin-right:auto; display:none;">Eliminar curso</button>
       <button class="btn" onclick="cerrarModales()">Cancelar</button>
-      <button class="btn btn-primario" onclick="guardarCurso()">Crear</button>
+      <button class="btn btn-primario" onclick="guardarCurso()" id="btn-guardar-curso">Crear</button>
     </div>
   </div>
 </div>
@@ -1741,6 +1848,7 @@ const UMBRAL_PELIGRO_TRABAJOS = 3; // trabajos sin entregar antes de alertar
 function categoriaDeNota(n) {
   if (n === '' || n === null || n === undefined || isNaN(n)) return null;
   const num = Number(n);
+  if (num < 1 || num > 10) return null; // Fuera del rango válido
   if (num < 6) return { clase: 'Regular', label: 'Regular', sigla: 'R' };
   if (num < 8) return { clase: 'Bien', label: 'Bien', sigla: 'B' };
   if (num < 10) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
@@ -1761,7 +1869,10 @@ function calcularNotaTrabajo(alumno, trabajo) {
     let algunaCargada = false;
     for (const c of trabajo.criterios) {
       const v = notasCrit[c.id];
-      const peso = Number(c.peso) || 1;
+      // Peso debe ser >= 0; tratamos NaN/undefined como 1. Si es 0 se ignora ese criterio.
+      let peso = Number(c.peso);
+      if (isNaN(peso) || peso < 0) peso = 1;
+      if (peso === 0) continue; // Criterio neutralizado
       if (v !== undefined && v !== null && v !== '' && !isNaN(v)) {
         sumaPond += Number(v) * peso;
         sumaPesos += peso;
@@ -1797,6 +1908,7 @@ function renderSidebar() {
         <span>${escapeHtml(esc.nombre)}</span>
         <span style="display:flex; gap:0.3rem; align-items:center;">
           <button class="btn-add-mini" onclick="event.stopPropagation(); abrirModalCurso('${esc.id}')" data-tip="Agregar un curso a esta escuela">+</button>
+          <button class="btn-add-mini" onclick="event.stopPropagation(); abrirModalEditarEscuela('${esc.id}')" data-tip="Editar nombre de la escuela">✎</button>
           <button class="btn-add-mini" onclick="event.stopPropagation(); borrarEscuela('${esc.id}')" data-tip="Eliminar la escuela completa">×</button>
           <span class="chev">▾</span>
         </span>
@@ -1805,7 +1917,10 @@ function renderSidebar() {
         ${esc.cursos.map(c => `
           <li class="curso-item ${c.id === estado.cursoActivoId ? 'activo' : ''}" onclick="seleccionarCurso('${c.id}')">
             <span>${escapeHtml(c.nombre)}</span>
-            <button class="borrar-mini" onclick="event.stopPropagation(); borrarCurso('${c.id}')" data-tip="Eliminar curso">×</button>
+            <span class="acciones-curso-mini">
+              <button class="borrar-mini" onclick="event.stopPropagation(); abrirModalEditarCurso('${c.id}')" data-tip="Editar curso (nombre, días, fechas, horarios)">✎</button>
+              <button class="borrar-mini" onclick="event.stopPropagation(); borrarCurso('${c.id}')" data-tip="Eliminar curso">×</button>
+            </span>
           </li>
         `).join('') || '<li style="font-size:0.75rem; color:var(--texto-tenue); padding:0.3rem 0.6rem;">Sin cursos</li>'}
       </ul>
@@ -1839,17 +1954,22 @@ function renderMain() {
 
   const { escuela, curso } = activo;
   const fechas = generarFechasClase(curso);
-  const diasNombres = curso.dias.map(d => DIAS_NOMBRES[d]).join(', ');
+
+  // Texto de horario opcional
+  const horarioTxt = curso.horario && curso.horario.trim() ? ` · ${escapeHtml(curso.horario)}` : '';
 
   main.innerHTML = `
     <div class="curso-header">
       <div>
         <h2>${escapeHtml(curso.nombre)}</h2>
-        <p class="meta">${escapeHtml(escuela.nombre)} · ${fechas.length} clases programadas (${curso.inicio} → ${curso.fin})</p>
+        <p class="meta">${escapeHtml(escuela.nombre)} · ${fechas.length} clases programadas (${curso.inicio} → ${curso.fin})${horarioTxt}</p>
         <div class="dias">${curso.dias.map(d => `<span class="dia-chip">${DIAS_NOMBRES[d]}</span>`).join('')}</div>
       </div>
       <div class="acciones-header">
-        <button class="btn" onclick="exportarExcel()" data-tip="Descargar todo el curso en un archivo .xlsx con dos hojas (Asistencias y Notas)">
+        <button class="btn" onclick="abrirModalEditarCurso('${curso.id}')" data-tip="Editar nombre, días, fechas y horarios del curso">
+          ✎ Editar curso
+        </button>
+        <button class="btn" onclick="exportarExcel()" data-tip="Descargar todo el curso en un archivo .xlsx (Asistencias, Notas, Rúbricas, Mensajes)">
           ⬇ Descargar Excel
         </button>
       </div>
@@ -1905,6 +2025,11 @@ function renderStatsAsistencias(curso, fechas) {
     });
   });
   const porcentajeP = totalRegistros > 0 ? Math.round(totalP / totalRegistros * 100) : 0;
+  const colorGeneral = totalRegistros === 0
+    ? 'var(--texto-tenue)'
+    : porcentajeP >= 80 ? 'var(--ok)'
+    : porcentajeP >= 60 ? 'var(--warn)'
+    : 'var(--bad)';
   const detalleEsp = especiales > 0
     ? `<div class="stat-detalle">${clasesPasadas} ya cursadas · ${especiales} día${especiales === 1 ? '' : 's'} especial${especiales === 1 ? '' : 'es'}</div>`
     : `<div class="stat-detalle">${clasesPasadas} ya cursadas</div>`;
@@ -1922,7 +2047,7 @@ function renderStatsAsistencias(curso, fechas) {
       </div>
       <div class="stat-card" data-tip="Porcentaje promedio de presentes sobre el total de asistencias registradas (excluyendo días especiales)">
         <div class="stat-label">% Asistencia general</div>
-        <div class="stat-value" style="color:var(--ok)">${porcentajeP}%</div>
+        <div class="stat-value" style="color:${colorGeneral}">${porcentajeP}%</div>
         <div class="stat-detalle">${totalP} presentes de ${totalRegistros} registros</div>
       </div>
       <div class="stat-card" data-tip="Distribución de los registros cargados hasta ahora">
@@ -1989,7 +2114,7 @@ function renderTablaAsistencias(curso, fechas) {
     const color = resumen.pct >= 80 ? 'var(--ok)' : resumen.pct >= 60 ? 'var(--warn)' : 'var(--bad)';
     const filaClase = resumen.libre ? 'fila-libre' : '';
     const badgeLibre = resumen.libre
-      ? `<span class="badge-estado badge-libre" data-tip="Asistencia ${resumen.pct}% — por debajo del ${UMBRAL_LIBRE}% requerido. El alumno está libre.">LIBRE</span>`
+      ? `<span class="badge-estado badge-libre" data-tip="Asistencia ${resumen.pct}% — por debajo del ${UMBRAL_LIBRE}% requerido. El alumno está libre." data-tip-pos="down">LIBRE</span>`
       : '';
 
     return `
@@ -2364,7 +2489,7 @@ function renderTablaNotas(curso) {
     const enPeligro = sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
     const filaClase = enPeligro ? 'fila-peligro' : '';
     const badgePeligro = enPeligro
-      ? `<span class="badge-estado badge-peligro" data-tip="Tiene ${sinEntregar} trabajos sin entregar — en peligro de desaprobar.">EN PELIGRO</span>`
+      ? `<span class="badge-estado badge-peligro" data-tip="Tiene ${sinEntregar} trabajos sin entregar — en peligro de desaprobar." data-tip-pos="down">EN PELIGRO</span>`
       : '';
 
     // Celda de mensaje (rectángulo ancho al lado del promedio)
@@ -2477,7 +2602,7 @@ function renderIconoMail(al) {
   const tip = tiene
     ? `Mail rápido a ${al.email} — click para opciones`
     : 'Cargar email para enviar mails rápidos';
-  return `<button class="btn-mail ${tiene ? 'tiene-mail' : ''}" onclick="abrirMenuMail(event, '${al.id}')" data-tip="${escapeHtml(tip)}">✉</button>`;
+  return `<button class="btn-mail ${tiene ? 'tiene-mail' : ''}" onclick="abrirMenuMail(event, '${al.id}')" data-tip="${escapeHtml(tip)}" data-tip-pos="down">✉</button>`;
 }
 
 // Render icono incentivo (kept for compatibility, not used currently)
@@ -2493,7 +2618,21 @@ function renderIconoIncentivo(al) {
 // ACCIONES
 // =========================================================
 function abrirModalEscuela() {
+  modoEdicion = { tipo: null, escuelaId: null }; // modo crear
+  document.getElementById('escuela-titulo').textContent = 'Nueva escuela';
+  document.getElementById('btn-guardar-escuela').textContent = 'Crear';
   document.getElementById('input-escuela-nombre').value = '';
+  document.getElementById('modal-escuela').classList.add('activo');
+  setTimeout(() => document.getElementById('input-escuela-nombre').focus(), 100);
+}
+
+function abrirModalEditarEscuela(escuelaId) {
+  const esc = estado.escuelas.find(e => e.id === escuelaId);
+  if (!esc) return;
+  modoEdicion = { tipo: 'editarEscuela', escuelaId };
+  document.getElementById('escuela-titulo').textContent = 'Editar escuela';
+  document.getElementById('btn-guardar-escuela').textContent = 'Guardar';
+  document.getElementById('input-escuela-nombre').value = esc.nombre;
   document.getElementById('modal-escuela').classList.add('activo');
   setTimeout(() => document.getElementById('input-escuela-nombre').focus(), 100);
 }
@@ -2501,16 +2640,34 @@ function abrirModalEscuela() {
 function guardarEscuela() {
   const nombre = document.getElementById('input-escuela-nombre').value.trim();
   if (!nombre) { toast('Ingresá un nombre'); return; }
-  estado.escuelas.push({ id: uid(), nombre, cursos: [] });
-  cerrarModales();
-  guardarEstado();
-  renderSidebar();
-  toast('Escuela creada');
+
+  if (modoEdicion.tipo === 'editarEscuela') {
+    const esc = estado.escuelas.find(e => e.id === modoEdicion.escuelaId);
+    if (!esc) { cerrarModales(); return; }
+    esc.nombre = nombre;
+    cerrarModales();
+    guardarEstado();
+    renderSidebar();
+    renderMain(); // por si la escuela está visible en el header del curso
+    toast('Escuela actualizada');
+  } else {
+    estado.escuelas.push({ id: uid(), nombre, cursos: [] });
+    cerrarModales();
+    guardarEstado();
+    renderSidebar();
+    toast('Escuela creada');
+  }
 }
 
 function abrirModalCurso(escuelaId) {
   modoEdicion = { tipo: 'curso', escuelaId };
+  document.getElementById('curso-titulo').textContent = 'Nuevo curso';
+  document.getElementById('btn-guardar-curso').textContent = 'Crear';
+  document.getElementById('btn-borrar-curso').style.display = 'none';
   document.getElementById('input-curso-nombre').value = '';
+  document.getElementById('input-curso-horario').value = '';
+  document.getElementById('input-curso-aula').value = '';
+  document.getElementById('input-curso-notas').value = '';
   const hoy = new Date();
   const anio = hoy.getFullYear();
   document.getElementById('input-curso-anio-inicio').value = `${anio}-03-01`;
@@ -2520,34 +2677,139 @@ function abrirModalCurso(escuelaId) {
   setTimeout(() => document.getElementById('input-curso-nombre').focus(), 100);
 }
 
+function abrirModalEditarCurso(cursoId) {
+  // Buscar el curso y su escuela
+  let curso = null, escuelaId = null;
+  for (const esc of estado.escuelas) {
+    const c = esc.cursos.find(c => c.id === cursoId);
+    if (c) { curso = c; escuelaId = esc.id; break; }
+  }
+  if (!curso) return;
+
+  modoEdicion = { tipo: 'editarCurso', escuelaId, cursoId };
+  document.getElementById('curso-titulo').textContent = 'Editar curso';
+  document.getElementById('btn-guardar-curso').textContent = 'Guardar';
+  document.getElementById('btn-borrar-curso').style.display = '';
+  document.getElementById('input-curso-nombre').value = curso.nombre;
+  document.getElementById('input-curso-horario').value = curso.horario || '';
+  document.getElementById('input-curso-aula').value = curso.aula || '';
+  document.getElementById('input-curso-notas').value = curso.notas || '';
+  document.getElementById('input-curso-anio-inicio').value = curso.inicio;
+  document.getElementById('input-curso-anio-fin').value = curso.fin;
+  // Restaurar días seleccionados
+  document.querySelectorAll('.dia-toggle').forEach(t => {
+    const d = Number(t.dataset.dia);
+    if (curso.dias.includes(d)) t.classList.add('activo');
+    else t.classList.remove('activo');
+  });
+  document.getElementById('modal-curso').classList.add('activo');
+  setTimeout(() => document.getElementById('input-curso-nombre').focus(), 100);
+}
+
 function guardarCurso() {
   const nombre = document.getElementById('input-curso-nombre').value.trim();
   const inicio = document.getElementById('input-curso-anio-inicio').value.trim();
   const fin = document.getElementById('input-curso-anio-fin').value.trim();
+  const horario = document.getElementById('input-curso-horario').value.trim();
+  const aula = document.getElementById('input-curso-aula').value.trim();
+  const notas = document.getElementById('input-curso-notas').value.trim();
   const dias = Array.from(document.querySelectorAll('.dia-toggle.activo')).map(t => Number(t.dataset.dia));
 
   if (!nombre) { toast('Ingresá un nombre de curso'); return; }
-  if (!inicio || !fin) { toast('Ingresá las fechas de inicio y fin (AAAA-MM-DD)'); return; }
+  if (!inicio || !fin) { toast('Ingresá las fechas de inicio y fin'); return; }
   if (dias.length === 0) { toast('Seleccioná al menos un día de la semana'); return; }
   if (new Date(inicio) > new Date(fin)) { toast('La fecha de inicio debe ser anterior al fin'); return; }
 
-  const escuela = estado.escuelas.find(e => e.id === modoEdicion.escuelaId);
-  const nuevoCurso = {
-    id: uid(),
-    nombre,
-    dias,
-    inicio,
-    fin,
-    alumnos: [],
-    trabajos: []
-  };
-  escuela.cursos.push(nuevoCurso);
-  estado.cursoActivoId = nuevoCurso.id;
+  if (modoEdicion.tipo === 'editarCurso') {
+    // Editar curso existente
+    let curso = null;
+    for (const esc of estado.escuelas) {
+      const c = esc.cursos.find(c => c.id === modoEdicion.cursoId);
+      if (c) { curso = c; break; }
+    }
+    if (!curso) { cerrarModales(); return; }
+
+    // Detectar cambios sensibles que afecten datos existentes
+    const cambiaInicio = curso.inicio !== inicio;
+    const cambiaFin = curso.fin !== fin;
+    const cambiaDias = JSON.stringify(curso.dias.slice().sort()) !== JSON.stringify(dias.slice().sort());
+
+    if (cambiaInicio || cambiaFin || cambiaDias) {
+      // Detectar si hay asistencias cargadas que podrían quedar fuera del nuevo rango/días
+      const nuevasFechas = new Set(generarFechasClase({ inicio, fin, dias }).map(f => fechaKey(f)));
+      let asistenciasHuerfanas = 0;
+      curso.alumnos.forEach(al => {
+        if (al.asistencias) {
+          for (const k of Object.keys(al.asistencias)) {
+            if (!nuevasFechas.has(k)) asistenciasHuerfanas++;
+          }
+        }
+      });
+      // También días especiales que quedarían fuera
+      let especialesHuerfanos = 0;
+      if (curso.diasEspeciales) {
+        for (const k of Object.keys(curso.diasEspeciales)) {
+          if (!nuevasFechas.has(k)) especialesHuerfanos++;
+        }
+      }
+
+      if (asistenciasHuerfanas > 0 || especialesHuerfanos > 0) {
+        const partes = [];
+        if (asistenciasHuerfanas > 0) partes.push(`${asistenciasHuerfanas} registro${asistenciasHuerfanas === 1 ? '' : 's'} de asistencia`);
+        if (especialesHuerfanos > 0) partes.push(`${especialesHuerfanos} día${especialesHuerfanos === 1 ? '' : 's'} especial${especialesHuerfanos === 1 ? '' : 'es'}`);
+        const ok = confirm(
+          `Los cambios en días o fechas dejarán ${partes.join(' y ')} fuera del calendario del curso. ` +
+          `Esos datos no se borrarán automáticamente, quedarán guardados pero ocultos hasta que vuelvas a ampliar el rango.\n\n¿Continuar?`
+        );
+        if (!ok) return;
+      }
+    }
+
+    curso.nombre = nombre;
+    curso.inicio = inicio;
+    curso.fin = fin;
+    curso.dias = dias;
+    if (horario) curso.horario = horario; else delete curso.horario;
+    if (aula) curso.aula = aula; else delete curso.aula;
+    if (notas) curso.notas = notas; else delete curso.notas;
+
+    cerrarModales();
+    guardarEstado();
+    renderSidebar();
+    renderMain();
+    toast('Curso actualizado');
+  } else {
+    // Crear nuevo
+    const escuela = estado.escuelas.find(e => e.id === modoEdicion.escuelaId);
+    if (!escuela) { cerrarModales(); return; }
+    const nuevoCurso = {
+      id: uid(),
+      nombre,
+      dias,
+      inicio,
+      fin,
+      alumnos: [],
+      trabajos: []
+    };
+    if (horario) nuevoCurso.horario = horario;
+    if (aula) nuevoCurso.aula = aula;
+    if (notas) nuevoCurso.notas = notas;
+    escuela.cursos.push(nuevoCurso);
+    estado.cursoActivoId = nuevoCurso.id;
+    cerrarModales();
+    guardarEstado();
+    renderSidebar();
+    renderMain();
+    toast('Curso creado');
+  }
+}
+
+function borrarCursoDesdeModal() {
+  if (modoEdicion.tipo !== 'editarCurso') return;
+  // Cerrar el modal antes del confirm para que no quede algo raro detrás
+  const cursoId = modoEdicion.cursoId;
   cerrarModales();
-  guardarEstado();
-  renderSidebar();
-  renderMain();
-  toast('Curso creado');
+  borrarCurso(cursoId);
 }
 
 function abrirModalTrabajo() {
@@ -2904,7 +3166,9 @@ function actualizarNotaFinalDisplay() {
   let sumaPesos = 0, sumaPond = 0, alguna = false;
   for (const c of t.criterios) {
     const v = edicionActual.notasTemp[c.id];
-    const peso = Number(c.peso) || 1;
+    let peso = Number(c.peso);
+    if (isNaN(peso) || peso < 0) peso = 1;
+    if (peso === 0) continue;
     if (v !== undefined && v !== null && v !== '' && !isNaN(v)) {
       sumaPond += Number(v) * peso;
       sumaPesos += peso;
@@ -3122,6 +3386,12 @@ function abrirMenuMail(event, alumnoId) {
       </div>
       <button class="editar-mail" onclick="abrirModalEmail('${al.id}')">Editar</button>
     </div>
+    <div class="mail-cliente-selector">
+      <span class="cliente-label">Abrir en:</span>
+      <button class="cliente-btn ${obtenerClienteMail() === 'gmail' ? 'activo' : ''}" onclick="elegirClienteMail('gmail', event)" data-tip="Gmail Web (recomendado si usás Gmail)">Gmail</button>
+      <button class="cliente-btn ${obtenerClienteMail() === 'outlook' ? 'activo' : ''}" onclick="elegirClienteMail('outlook', event)" data-tip="Outlook Web (Hotmail / Office)">Outlook</button>
+      <button class="cliente-btn ${obtenerClienteMail() === 'mailto' ? 'activo' : ''}" onclick="elegirClienteMail('mailto', event)" data-tip="El cliente de mail predeterminado de tu sistema (Mail de Mac, Thunderbird, etc.)">Otro</button>
+    </div>
   `;
 
   // Plantillas según estado
@@ -3201,14 +3471,37 @@ function abrirMenuMail(event, alumnoId) {
   const overlay = document.getElementById('mail-menu-overlay');
   overlay.classList.add('activo');
 
-  // Posición: debajo del botón clickeado
-  const rect = event.currentTarget.getBoundingClientRect();
-  const menuW = 320;
-  let left = rect.left;
-  if (left + menuW > window.innerWidth - 10) left = window.innerWidth - menuW - 10;
-  if (left < 10) left = 10;
-  menu.style.left = left + 'px';
-  menu.style.top = (rect.bottom + 6) + 'px';
+  // Esperar un frame para que se calcule el alto real del menú
+  requestAnimationFrame(() => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const menuW = menuRect.width || 320;
+    const menuH = menuRect.height || 280;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margen = 10;
+
+    // Horizontal: alinear con el botón, pero no salirse
+    let left = rect.left;
+    if (left + menuW > vw - margen) left = vw - menuW - margen;
+    if (left < margen) left = margen;
+
+    // Vertical: por defecto debajo del botón. Si no entra, encima.
+    let top = rect.bottom + 6;
+    if (top + menuH > vh - margen) {
+      // No entra abajo. Intentar arriba.
+      const topAlt = rect.top - menuH - 6;
+      if (topAlt >= margen) {
+        top = topAlt;
+      } else {
+        // No entra ni arriba ni abajo: pegar al borde inferior del viewport
+        top = Math.max(margen, vh - menuH - margen);
+      }
+    }
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+  });
 }
 
 function cerrarMenuMail(event) {
@@ -3302,11 +3595,59 @@ function enviarMailPlantilla(alumnoId, plantillaId) {
   abrirCompositorMail(al.email, p.asunto, p.cuerpo);
 }
 
-function abrirCompositorMail(destinatario, asunto, cuerpo) {
-  const url = 'mailto:' + encodeURIComponent(destinatario) +
-    '?subject=' + encodeURIComponent(asunto) +
-    '&body=' + encodeURIComponent(cuerpo);
-  window.location.href = url;
+// Cliente de mail preferido: 'gmail' (default), 'outlook', 'mailto'
+function obtenerClienteMail() {
+  return localStorage.getItem('cliente-mail-preferido') || 'gmail';
+}
+function setClienteMail(cliente) {
+  localStorage.setItem('cliente-mail-preferido', cliente);
+}
+
+// Cambiar el cliente desde el menú sin cerrarlo
+function elegirClienteMail(cliente, event) {
+  if (event) event.stopPropagation();
+  setClienteMail(cliente);
+  // Refrescar los botones activos del selector dentro del menú
+  document.querySelectorAll('.mail-cliente-selector .cliente-btn').forEach(btn => {
+    btn.classList.remove('activo');
+  });
+  if (event && event.currentTarget) event.currentTarget.classList.add('activo');
+  toast('Cliente: ' + (cliente === 'gmail' ? 'Gmail' : cliente === 'outlook' ? 'Outlook' : 'Predeterminado'));
+}
+
+function abrirCompositorMail(destinatario, asunto, cuerpo, clienteOverride) {
+  const cliente = clienteOverride || obtenerClienteMail();
+  let url;
+
+  if (cliente === 'gmail') {
+    // Gmail Web: abre en pestaña nueva con todo precargado
+    url = 'https://mail.google.com/mail/?view=cm&fs=1' +
+          '&to=' + encodeURIComponent(destinatario) +
+          '&su=' + encodeURIComponent(asunto) +
+          '&body=' + encodeURIComponent(cuerpo);
+    window.open(url, '_blank', 'noopener');
+  } else if (cliente === 'outlook') {
+    // Outlook Web (outlook.live.com / outlook.office.com)
+    url = 'https://outlook.live.com/mail/0/deeplink/compose?' +
+          'to=' + encodeURIComponent(destinatario) +
+          '&subject=' + encodeURIComponent(asunto) +
+          '&body=' + encodeURIComponent(cuerpo);
+    window.open(url, '_blank', 'noopener');
+  } else {
+    // mailto: usa el cliente predeterminado del sistema.
+    // Usamos un link temporal con target=_blank para no perder el estado de la app
+    // si el usuario está en medio de algo.
+    url = 'mailto:' + encodeURIComponent(destinatario) +
+          '?subject=' + encodeURIComponent(asunto) +
+          '&body=' + encodeURIComponent(cuerpo);
+    const link = document.createElement('a');
+    link.href = url;
+    link.rel = 'noopener';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => link.remove(), 100);
+  }
 }
 
 function abrirModalMailLibre(alumnoId) {
@@ -3317,7 +3658,9 @@ function abrirModalMailLibre(alumnoId) {
   if (!al || !al.email) return;
   edicionActual.alumnoId = alumnoId;
   document.getElementById('mail-libre-titulo').textContent = `Mail a ${al.nombre}`;
-  document.getElementById('mail-libre-sub').textContent = `Se enviará a: ${al.email}`;
+  const cliente = obtenerClienteMail();
+  const nombreCliente = cliente === 'gmail' ? 'Gmail' : cliente === 'outlook' ? 'Outlook' : 'cliente predeterminado';
+  document.getElementById('mail-libre-sub').textContent = `Se abrirá en ${nombreCliente}. Destinatario: ${al.email}`;
   document.getElementById('input-mail-asunto').value = `${activo.curso.nombre} — `;
   document.getElementById('input-mail-cuerpo').value = `Hola, ${al.nombre.split(' ')[0]}:\n\n`;
   document.getElementById('modal-mail-libre').classList.add('activo');
@@ -3514,11 +3857,20 @@ function exportarTodo() {
 function importarTodo(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (!confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) return;
+  let mensaje = 'Esto reemplazará todos los datos actuales. ¿Continuar?';
+  if (googleState && googleState.conectado) {
+    mensaje = 'Esto reemplazará todos los datos actuales Y también sobrescribirá lo que está guardado en tu Google Drive con los datos importados. ¿Continuar?';
+  }
+  if (!confirm(mensaje)) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      // Validación mínima del esquema
+      if (typeof data !== 'object' || data === null || !Array.isArray(data.escuelas)) {
+        toast('El archivo no tiene el formato esperado (debe contener "escuelas")');
+        return;
+      }
       estado = { ...estado, ...data };
       guardarEstado();
       renderSidebar();
@@ -3552,7 +3904,14 @@ function toast(msg) {
 
 // Cerrar modales con ESC o click fuera
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') cerrarModales();
+  if (e.key === 'Escape') {
+    cerrarModales();
+    // Cerrar también el menú flotante de mail si está abierto
+    const overlayMail = document.getElementById('mail-menu-overlay');
+    if (overlayMail && overlayMail.classList.contains('activo')) {
+      overlayMail.classList.remove('activo');
+    }
+  }
 });
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', (e) => {
@@ -3582,7 +3941,7 @@ document.querySelectorAll('.dia-toggle').forEach(t => {
 
 const GOOGLE_CLIENT_ID = '310246764932-qelmod0htvr861p596pu591tpn4q8t3q.apps.googleusercontent.com'; // ← PEGAR ACÁ EL CLIENT ID
 const DRIVE_FILE_NAME = 'gestor-clases-datos.json';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email';
 
 let googleState = {
   configurado: false,
