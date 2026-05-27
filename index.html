@@ -679,6 +679,36 @@ th.col-trabajo button.borrar-trabajo:hover { color: var(--bad); }
   transform: translateX(-50%) translateY(0);
 }
 
+/* Tooltip flotante "rich" para celdas de nota - se posiciona por JS con position:fixed
+   para no quedar recortado por el overflow del .tabla-wrap. */
+#tooltip-rich {
+  position: fixed;
+  z-index: 900;
+  background: var(--fondo-panel);
+  color: var(--texto);
+  border: 1px solid var(--borde-fuerte);
+  box-shadow: var(--sombra-md);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  max-width: 280px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+}
+#tooltip-rich.visible { opacity: 1; transform: translateY(0); }
+#tooltip-rich .titulo {
+  font-weight: 700;
+  color: var(--acento);
+  margin-bottom: 0.15rem;
+}
+#tooltip-rich .detalle {
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+}
+
 /* ---- Badges de estado del alumno ---- */
 .badge-estado {
   display: inline-flex;
@@ -1085,6 +1115,13 @@ td.celda-asistencia.focus-celda {
   z-index: 5;
   position: relative;
 }
+td.celda-nota-valorativa.focus-celda {
+  outline: 2px solid var(--acento);
+  outline-offset: -2px;
+  background: var(--acento-suave) !important;
+  z-index: 5;
+  position: relative;
+}
 .modo-carga-rapida-banner {
   display: flex;
   align-items: center;
@@ -1388,6 +1425,30 @@ tr:hover .btn-mail.tiene-mail { opacity: 1; }
   opacity: 1 !important;
 }
 
+/* Botón "Ver tarjeta del alumno" - igual look que btn-mail */
+.btn-tarjeta {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 0.25rem;
+  opacity: 0.4;
+  transition: all var(--t-rapido);
+  vertical-align: middle;
+  font-family: serif; /* La "i" sale más elegante en serif */
+  font-style: italic;
+}
+tr:hover .btn-tarjeta { opacity: 0.85; }
+.btn-tarjeta:hover {
+  color: var(--acento);
+  background: var(--acento-suave);
+  opacity: 1 !important;
+}
+
 /* ---- Menú de mail (dropdown) ---- */
 .mail-menu-overlay {
   position: fixed;
@@ -1635,6 +1696,10 @@ tr:hover .acciones-alumno { opacity: 1; }
   transition: opacity var(--t-medio);
   backdrop-filter: blur(2px);
 }
+/* El modal de confirmar destructivo se abre encima de otros modales
+   (ej: confirmar dentro del modal de papelera). Lo elevamos para que
+   reciba los clicks correctamente y no quede tapado. */
+#modal-confirmar { z-index: 1100; background: rgba(0,0,0,0.6); }
 .modal-overlay.activo {
   opacity: 1;
   pointer-events: auto;
@@ -2081,6 +2146,12 @@ tr:hover .acciones-alumno { opacity: 1; }
 
 <!-- M5 — Botón volver arriba (aparece al hacer scroll) -->
 <button class="btn-volver-arriba" id="btn-volver-arriba" onclick="volverArriba()" data-tip="Volver al inicio de la página" data-tip-pos="up" aria-label="Volver arriba">↑</button>
+
+<!-- Tooltip flotante para celdas de nota (posición JS, no recortado por overflow) -->
+<div id="tooltip-rich" aria-hidden="true">
+  <div class="titulo"></div>
+  <div class="detalle"></div>
+</div>
 
 <script>
 // =========================================================
@@ -2564,7 +2635,7 @@ function renderTablaAsistencias(curso, fechas) {
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgeLibre}${renderIconoMail(al)}
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgeLibre}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button>${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -2615,7 +2686,7 @@ function renderTablaAsistencias(curso, fechas) {
       <button class="btn btn-dia-especial" onclick="abrirModalDiaEspecial()" data-tip="Marcar una fecha como feriado, excursión o suspensión">
         ★ Día especial
       </button>
-      <button class="btn" onclick="marcarTodosPresentesHoy()" data-tip="Marca como presentes a todos los alumnos en la clase de hoy (o la más reciente que ya pasó)">
+      <button class="btn" onclick="marcarTodosPresentesHoy()" data-tip="Marca presentes a todos en el día más cercano que aún no tenga la asistencia cargada. En modo carga rápida, usa el día donde está el cursor.">
         ✓ Todos presentes
       </button>
       <button class="btn" onclick="iniciarModoCargaRapida()" data-tip="Activá el modo carga rápida: usá P/A/J/T y las flechas para cargar la grilla con el teclado">
@@ -2858,6 +2929,19 @@ function limpiarOrdenFiltro(tab) {
 function renderNotas(curso) {
   const cont = document.getElementById('tab-contenido');
 
+  // Banner del modo carga rápida de notas (si está activo)
+  const bannerCarga = modoCargaNotas.activo ? `
+    <div class="modo-carga-rapida-banner">
+      <span style="font-weight:600;">⌨ Modo carga rápida activo (Notas)</span>
+      <span style="color:var(--texto-suave);">
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mueve ·
+        Tipeá <kbd>0</kbd>–<kbd>9</kbd> y <kbd>.</kbd> · <kbd>Enter</kbd> confirma y baja ·
+        <kbd>Supr</kbd> borra · En rúbricas, <kbd>Enter</kbd> abre criterios · <kbd>Esc</kbd> sale
+      </span>
+      <button class="salir" onclick="salirModoCargaRapidaNotas()">Salir</button>
+    </div>
+  ` : '';
+
   // Calcular alumnos en peligro: más de UMBRAL_PELIGRO_TRABAJOS trabajos sin nota
   let peligro = [];
   if (curso.trabajos.length > 0) {
@@ -2870,7 +2954,12 @@ function renderNotas(curso) {
     ? `<div class="alerta-warn"><span style="font-size:1.2rem;">⚠</span> <span><strong>${peligro.length} ${peligro.length === 1 ? 'alumno está en peligro' : 'alumnos están en peligro'} de desaprobar</strong> (más de ${UMBRAL_PELIGRO_TRABAJOS} trabajos sin entregar): ${peligro.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
     : '';
 
-  cont.innerHTML = renderStatsNotas(curso) + alertaPeligro + renderTablaNotas(curso);
+  cont.innerHTML = bannerCarga + renderStatsNotas(curso) + alertaPeligro + renderTablaNotas(curso);
+
+  // Restaurar el foco visual de la celda al re-renderizar
+  if (modoCargaNotas.activo) {
+    setTimeout(() => actualizarFocoCargaNotas(), 30);
+  }
 }
 
 function renderStatsNotas(curso) {
@@ -2942,22 +3031,26 @@ function renderTablaNotas(curso) {
       const cat = categoriaDeNota(nota);
       const tieneRubrica = t.criterios && t.criterios.length > 0;
 
-      let display, tip;
+      let display, tipTitulo, tipDetalle;
       if (cat) {
         display = `<span class="valor-display nota-${cat.clase}">${cat.sigla}</span>`;
-        // Bug fix: tooltip acortado para no montarse sobre columnas vecinas ni cortarse en el borde del scroll.
-        // El nombre del alumno y el trabajo ya se ven en su fila/columna, no hace falta repetirlos acá.
-        tip = `${cat.label} (${nota.toFixed(2)}) · click para ${tieneRubrica ? 'editar criterios' : 'editar'}`;
+        tipTitulo = `${cat.label} · ${nota.toFixed(2)}`;
+        tipDetalle = tieneRubrica
+          ? `${escapeHtml(t.nombre)} — click para editar criterios`
+          : `${escapeHtml(t.nombre)} — click para editar la nota`;
       } else {
         display = `<span class="valor-display" style="color:var(--texto-tenue); background:transparent;">—</span>`;
-        tip = `Sin nota · click para cargar`;
+        tipTitulo = `Sin nota`;
+        tipDetalle = `${escapeHtml(t.nombre)} — click para cargar`;
       }
 
       const onclick = tieneRubrica
         ? `onclick="abrirNotasCriterios('${al.id}','${t.id}')"`
         : `onclick="iniciarEdicionNotaSimple(this,'${al.id}','${t.id}')"`;
 
-      return `<td class="celda-nota-valorativa" ${onclick} data-tip="${escapeHtml(tip)}" data-tip-pos="down">${display}</td>`;
+      // data-tip-rich: el tooltip se renderiza con position:fixed por JS para no quedar
+      // recortado por el overflow de la tabla ni montarse sobre columnas vecinas.
+      return `<td class="celda-nota-valorativa" ${onclick} data-tip-rich-titulo="${escapeHtml(tipTitulo)}" data-tip-rich-detalle="${tipDetalle}">${display}</td>`;
     }).join('');
 
     const prom = calcularPromedioAlumno(al, curso.trabajos);
@@ -2986,7 +3079,7 @@ function renderTablaNotas(curso) {
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgePeligro}${renderIconoMail(al)}
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgePeligro}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button>${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -3045,6 +3138,9 @@ function renderTablaNotas(curso) {
         </select>
       </div>
       ${btnTrabajo}
+      <button class="btn" onclick="iniciarModoCargaRapidaNotas()" data-tip="Cargar notas con el teclado. Usá flechas para navegar, números para tipear (ej. 8.5), Enter para confirmar y bajar, Supr para borrar. Esc sale.">
+        ⌨ Modo carga rápida
+      </button>
       ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('notas')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
       <div class="toolbar-info">
         ${filtroActivo ? `<span class="badge-filtro">${ETIQUETAS_FILTRO_NOTAS[estado.filtroNotas]}</span>` : ''}
@@ -3330,18 +3426,24 @@ function guardarTrabajo() {
 }
 
 function cerrarModales() {
-  // Si el modal de confirmar estaba abierto, esto cuenta como cancelar
-  const confirmarAbierto = document.getElementById('modal-confirmar')?.classList.contains('activo');
-  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('activo'));
-  if (confirmarAbierto && _confirmarResolve) {
-    const r = _confirmarResolve; _confirmarResolve = null; r(false);
+  // Si el modal de confirmar estaba abierto, cerramos SOLO ese (cuenta como cancelar)
+  // para que el modal de fondo (ej. papelera) siga visible.
+  const confirmarOverlay = document.getElementById('modal-confirmar');
+  if (confirmarOverlay?.classList.contains('activo')) {
+    confirmarOverlay.classList.remove('activo');
+    if (_confirmarResolve) {
+      const r = _confirmarResolve; _confirmarResolve = null; r(false);
+    }
+    return;
   }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('activo'));
 }
 
 function seleccionarCurso(id) {
   estado.cursoActivoId = id;
   estado.busqueda = ''; // M3: limpiar búsqueda al cambiar de curso
   modoCarga.activo = false; // M1: salir del modo carga rápida
+  modoCargaNotas.activo = false;
   guardarEstado();
   renderSidebar();
   renderMain();
@@ -3681,20 +3783,49 @@ function ciclarAsistencia(alumnoId, fecha) {
 }
 
 // =========================================================
-// M2 — MARCAR TODOS PRESENTES (hoy o la clase más reciente)
+// M2 — MARCAR TODOS PRESENTES
+//
+// Comportamiento:
+//   1. Si el modo carga rápida está activo, usa la fecha donde está el cursor.
+//   2. Si no, busca el día de clase MÁS CERCANO A HOY que esté sin completar
+//      (algún alumno sin marcar). Si hoy hay clase y está incompleta, gana hoy.
+//      Si no, se prefiere la pasada más reciente; si todas están completas,
+//      se prefiere la próxima futura más cercana.
+//   3. Si todas están completas y no hay futuras, usa la más reciente que ya pasó.
 // =========================================================
-function fechaClaseMasReciente(curso) {
-  // Devuelve la fechaKey de la última clase del curso que sea hoy o anterior,
-  // ignorando días especiales. null si no hay ninguna.
-  const fechas = generarFechasClase(curso);
+function fechaIncompletaMasCercana(curso, fechas) {
+  // Devuelve { fechaKey, fecha } o null
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  // Recorrer al revés y devolver la primera que sea <= hoy y no sea especial
-  for (let i = fechas.length - 1; i >= 0; i--) {
-    if (fechas[i] > hoy) continue;
-    const k = fechaKey(fechas[i]);
+
+  function estaIncompleta(k) {
+    if (diaEspecialMotivo(curso, k)) return false;
+    return curso.alumnos.some(al => !al.asistencias || !al.asistencias[k]);
+  }
+
+  // 1) Fechas pasadas o de hoy, de la más reciente a la más vieja
+  const pasadas = fechas.filter(f => f <= hoy);
+  for (let i = pasadas.length - 1; i >= 0; i--) {
+    const f = pasadas[i];
+    const k = fechaKey(f);
     if (diaEspecialMotivo(curso, k)) continue;
-    return { fechaKey: k, fecha: fechas[i] };
+    if (estaIncompleta(k)) return { fechaKey: k, fecha: f };
+  }
+  // 2) Futuras, de la más cercana a la más lejana
+  const futuras = fechas.filter(f => f > hoy);
+  for (let i = 0; i < futuras.length; i++) {
+    const f = futuras[i];
+    const k = fechaKey(f);
+    if (diaEspecialMotivo(curso, k)) continue;
+    if (estaIncompleta(k)) return { fechaKey: k, fecha: f };
+  }
+  // 3) Si todas están completas, devolvemos la pasada más reciente para que el usuario
+  //    pueda "rehacer" si quiere
+  for (let i = pasadas.length - 1; i >= 0; i--) {
+    const f = pasadas[i];
+    const k = fechaKey(f);
+    if (diaEspecialMotivo(curso, k)) continue;
+    return { fechaKey: k, fecha: f };
   }
   return null;
 }
@@ -3707,28 +3838,43 @@ function marcarTodosPresentesHoy() {
     toast('No hay alumnos para marcar');
     return;
   }
-  const ref = fechaClaseMasReciente(curso);
-  if (!ref) {
-    toast('No hay clases pasadas en el curso');
+  const fechas = generarFechasClase(curso);
+  if (fechas.length === 0) {
+    toast('El curso no tiene fechas válidas');
     return;
   }
-  // Contar cuántos quedaban sin marcar para feedback
-  let nuevos = 0;
-  let yaTenian = 0;
+
+  let ref = null;
+  // Si el modo carga rápida está activo, usar la fecha donde está el cursor
+  if (modoCarga.activo) {
+    const f = fechas[modoCarga.fechaIdx];
+    if (f && !diaEspecialMotivo(curso, fechaKey(f))) {
+      ref = { fechaKey: fechaKey(f), fecha: f };
+    }
+  }
+  // Si no, buscar el día sin completar más cercano
+  if (!ref) ref = fechaIncompletaMasCercana(curso, fechas);
+  if (!ref) {
+    toast('No hay clases válidas en el curso');
+    return;
+  }
+
+  // Aplicar a TODOS los alumnos (no solo los filtrados) por simplicidad y consistencia
+  let marcados = 0;
+  let yaEstaban = 0;
   curso.alumnos.forEach(al => {
     if (!al.asistencias) al.asistencias = {};
-    const actual = al.asistencias[ref.fechaKey];
-    if (actual) yaTenian++;
-    else nuevos++;
+    if (al.asistencias[ref.fechaKey] === 'P') yaEstaban++;
+    else marcados++;
     al.asistencias[ref.fechaKey] = 'P';
   });
   guardarEstado();
   renderMain();
   const desc = fechaCompleta(ref.fecha);
   const partes = [];
-  if (nuevos > 0) partes.push(`${nuevos} marcado${nuevos === 1 ? '' : 's'} presente${nuevos === 1 ? '' : 's'}`);
-  if (yaTenian > 0) partes.push(`${yaTenian} ya tenía${yaTenian === 1 ? '' : 'n'} estado (sobrescrito${yaTenian === 1 ? '' : 's'})`);
-  toast(`${desc}: ${partes.join(', ')}`);
+  if (marcados > 0) partes.push(`${marcados} marcado${marcados === 1 ? '' : 's'} presente${marcados === 1 ? '' : 's'}`);
+  if (yaEstaban > 0) partes.push(`${yaEstaban} ya estaba${yaEstaban === 1 ? '' : 'n'} en P`);
+  toast(`${desc}: ${partes.join(' · ')}`);
 }
 
 // =========================================================
@@ -3736,6 +3882,12 @@ function marcarTodosPresentesHoy() {
 // =========================================================
 // Estado: { activo, alumnoIdx, fechaIdx }
 let modoCarga = { activo: false, alumnoIdx: 0, fechaIdx: 0 };
+// Modo carga rápida para NOTAS (tab notas).
+// alumnoIdx: índice en el array filtrado/ordenado actual.
+// trabajoIdx: índice del trabajo (columna).
+// editando: si estamos en modo edición (input visible para tipear la nota).
+// buffer: texto que el usuario tipeó (puede ser '8', '8.5', '8.50', etc.).
+let modoCargaNotas = { activo: false, alumnoIdx: 0, trabajoIdx: 0, editando: false, buffer: '' };
 
 function iniciarModoCargaRapida() {
   const activo = obtenerCursoActivo();
@@ -3805,17 +3957,79 @@ function setEstadoCeldaCarga(estadoLetra) {
   if (!al) return;
   const fk = fechaKey(fechas[modoCarga.fechaIdx]);
   if (diaEspecialMotivo(activo.curso, fk)) return; // No tocar días especiales
+
   if (!al.asistencias) al.asistencias = {};
   if (!estadoLetra || estadoLetra === '') delete al.asistencias[fk];
   else al.asistencias[fk] = estadoLetra;
-  guardarEstado();
-  // Mover automáticamente al siguiente alumno hacia abajo, saltando los que no entran en el filtro
+
+  // ===== ACTUALIZACIÓN QUIRÚRGICA (sin re-render completo) =====
+  // Buscamos el span de la celda actual y solo cambiamos su clase y contenido.
+  // Esto evita que tipear rápido P-A-P-A trabe el render y haga "parpadear"
+  // el rectángulo de foco (que antes desaparecía durante el innerHTML completo).
+  const selCelda = `td.celda-asistencia[onclick*="'${al.id}'"][onclick*="'${fk}'"]`;
+  const celda = document.querySelector(selCelda);
+  if (celda) {
+    const chip = celda.querySelector('.estado-chip');
+    if (chip) {
+      const v = al.asistencias[fk] || '';
+      chip.className = 'estado-chip ' + (v ? 'estado-' + v : 'estado-vacio');
+      chip.textContent = v || '·';
+    }
+    // Actualizar data-tip
+    const lblEstado = (estadoLetra && ESTADO_LABEL[estadoLetra]) || ESTADO_LABEL[''];
+    const fechaActual = fechas[modoCarga.fechaIdx];
+    const tip = `${al.nombre} — ${fechaCompleta(fechaActual)} — ${lblEstado}${estadoLetra ? '' : ' (click para marcar)'}`;
+    celda.setAttribute('data-tip', tip);
+  }
+
+  // Mover el cursor visualmente al siguiente alumno (sin re-render)
   const siguienteAlumno = modoCarga.alumnoIdx + 1;
   if (siguienteAlumno < ordenados.length) {
     modoCarga.alumnoIdx = siguienteAlumno;
   }
-  renderMain();
-  setTimeout(() => actualizarFocoCargaRapida(), 30);
+  actualizarFocoCargaRapida();
+
+  // Guardado debounced para que no se trabe al tipear rápido. El estado en memoria
+  // ya está actualizado; el localStorage se sincroniza un toque después.
+  guardadoDebounced();
+
+  // Actualizar header de stats + alerta de libres + columnas % asistencia
+  // de forma asíncrona también (sin bloquear el siguiente tipeo)
+  programarActualizacionStatsAsistencias();
+}
+
+let _guardadoTimer = null;
+function guardadoDebounced() {
+  clearTimeout(_guardadoTimer);
+  _guardadoTimer = setTimeout(() => {
+    guardarEstado();
+  }, 250);
+}
+
+// Recalcular stats (% asistencia por alumno, alerta de libres, header) sin re-renderizar la tabla.
+// Se llama tras un cambio de asistencia en modo carga rápida.
+let _statsTimer = null;
+function programarActualizacionStatsAsistencias() {
+  clearTimeout(_statsTimer);
+  _statsTimer = setTimeout(() => {
+    const activo = obtenerCursoActivo();
+    if (!activo) return;
+    const { curso } = activo;
+    const fechas = generarFechasClase(curso);
+    // Actualizar columna "% Asist." de cada fila
+    curso.alumnos.forEach(al => {
+      const fila = document.querySelector(`tr td.col-alumno span.alumno-nombre-clickeable[onclick*="'${al.id}'"]`);
+      if (!fila) return;
+      const tr = fila.closest('tr');
+      if (!tr) return;
+      const colResumen = tr.querySelector('td.col-resumen');
+      if (!colResumen) return;
+      const resumen = calcularResumenAlumno(al, fechas, curso);
+      const color = resumen.pct >= 80 ? 'var(--ok)' : resumen.pct >= 60 ? 'var(--warn)' : 'var(--bad)';
+      colResumen.innerHTML = `<span style="color:${color}; font-weight:700;">${resumen.pct}%</span>`;
+      colResumen.setAttribute('data-tip', `${resumen.p} presentes / ${resumen.total_registros} clases registradas`);
+    });
+  }, 300);
 }
 
 function moverFocoCarga(dx, dy) {
@@ -3869,6 +4083,288 @@ document.addEventListener('keydown', (e) => {
   if (k === 'ArrowUp')    { e.preventDefault(); moverFocoCarga(0, -1); return; }
   if (k === 'Enter')      { e.preventDefault(); moverFocoCarga(0, 1); return; }
   if (k === 'Tab')        { e.preventDefault(); moverFocoCarga(e.shiftKey ? -1 : 1, 0); return; }
+});
+
+// =========================================================
+// MODO CARGA RÁPIDA — NOTAS (tab notas)
+// =========================================================
+function iniciarModoCargaRapidaNotas() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  if (activo.curso.alumnos.length === 0) {
+    toast('Agregá al menos un alumno antes de usar el modo carga rápida');
+    return;
+  }
+  if (activo.curso.trabajos.length === 0) {
+    toast('Agregá al menos un trabajo antes de usar el modo carga rápida');
+    return;
+  }
+  modoCargaNotas = { activo: true, alumnoIdx: 0, trabajoIdx: 0, editando: false, buffer: '' };
+  renderMain();
+  setTimeout(() => actualizarFocoCargaNotas(), 60);
+}
+
+function salirModoCargaRapidaNotas() {
+  modoCargaNotas.activo = false;
+  modoCargaNotas.editando = false;
+  modoCargaNotas.buffer = '';
+  renderMain();
+}
+
+function actualizarFocoCargaNotas() {
+  document.querySelectorAll('td.celda-nota-valorativa.focus-celda').forEach(el => el.classList.remove('focus-celda'));
+  if (!modoCargaNotas.activo) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const { curso } = activo;
+  if (curso.alumnos.length === 0 || curso.trabajos.length === 0) return;
+  // Para alumnos respetamos el orden visible (filtrado + ordenado)
+  const fechas = generarFechasClase(curso);
+  const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroNotas, curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenNotas, curso, fechas);
+  if (ordenados.length === 0) return;
+  // Clampear índices
+  modoCargaNotas.alumnoIdx = Math.max(0, Math.min(modoCargaNotas.alumnoIdx, ordenados.length - 1));
+  modoCargaNotas.trabajoIdx = Math.max(0, Math.min(modoCargaNotas.trabajoIdx, curso.trabajos.length - 1));
+  const al = ordenados[modoCargaNotas.alumnoIdx];
+  const t = curso.trabajos[modoCargaNotas.trabajoIdx];
+  // Buscar la celda. Las celdas tienen onclick que incluye alumno y trabajo id.
+  const sel = `td.celda-nota-valorativa[onclick*="'${al.id}'"][onclick*="'${t.id}'"]`;
+  const celda = document.querySelector(sel);
+  if (celda) {
+    celda.classList.add('focus-celda');
+    celda.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }
+}
+
+function obtenerCeldaCargaNotas() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return null;
+  const { curso } = activo;
+  const fechas = generarFechasClase(curso);
+  const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroNotas, curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenNotas, curso, fechas);
+  if (ordenados.length === 0) return null;
+  const al = ordenados[modoCargaNotas.alumnoIdx];
+  const t = curso.trabajos[modoCargaNotas.trabajoIdx];
+  if (!al || !t) return null;
+  return { al, t, curso, ordenados };
+}
+
+function moverFocoCargaNotas(dx, dy) {
+  if (!modoCargaNotas.activo) return;
+  // Si estaba editando, confirmar primero el buffer
+  if (modoCargaNotas.editando) confirmarBufferCargaNotas();
+  const ctx = obtenerCeldaCargaNotas();
+  if (!ctx) return;
+  const totalAl = ctx.ordenados.length;
+  const totalTr = ctx.curso.trabajos.length;
+  modoCargaNotas.alumnoIdx = Math.max(0, Math.min(modoCargaNotas.alumnoIdx + dy, totalAl - 1));
+  modoCargaNotas.trabajoIdx = Math.max(0, Math.min(modoCargaNotas.trabajoIdx + dx, totalTr - 1));
+  actualizarFocoCargaNotas();
+}
+
+function iniciarEdicionBufferCargaNotas(charInicial) {
+  const ctx = obtenerCeldaCargaNotas();
+  if (!ctx) return;
+  const tieneRubrica = ctx.t.criterios && ctx.t.criterios.length > 0;
+  if (tieneRubrica) {
+    // En trabajos con rúbrica, abrir el modal directamente. No hay edición inline.
+    abrirNotasCriterios(ctx.al.id, ctx.t.id);
+    return;
+  }
+  // Empezar buffer con el char inicial (si es válido)
+  modoCargaNotas.editando = true;
+  modoCargaNotas.buffer = charInicial || '';
+  pintarBufferCargaNotas();
+}
+
+function pintarBufferCargaNotas() {
+  const ctx = obtenerCeldaCargaNotas();
+  if (!ctx) return;
+  const sel = `td.celda-nota-valorativa[onclick*="'${ctx.al.id}'"][onclick*="'${ctx.t.id}'"]`;
+  const celda = document.querySelector(sel);
+  if (!celda) return;
+  const buf = modoCargaNotas.buffer;
+  // Reemplazar contenido visualmente con el buffer
+  celda.innerHTML = `<span class="valor-display" style="background:var(--acento-suave); color:var(--acento); border:1px dashed var(--acento);">${escapeHtml(buf || '·')}</span>`;
+}
+
+function confirmarBufferCargaNotas() {
+  if (!modoCargaNotas.editando) return;
+  const ctx = obtenerCeldaCargaNotas();
+  if (!ctx) { modoCargaNotas.editando = false; modoCargaNotas.buffer = ''; return; }
+  const buf = modoCargaNotas.buffer.trim();
+  // Buffer vacío significa "no guardar nada nuevo" — restauramos el valor previo
+  if (buf === '') {
+    modoCargaNotas.editando = false;
+    modoCargaNotas.buffer = '';
+    rerenderCeldaNotaCargaRapida(ctx.al, ctx.t);
+    return;
+  }
+  const num = Number(buf.replace(',', '.'));
+  if (isNaN(num) || num < 1 || num > 10) {
+    toast('Nota inválida (1 a 10)');
+    // Restaurar valor previo
+    modoCargaNotas.editando = false;
+    modoCargaNotas.buffer = '';
+    rerenderCeldaNotaCargaRapida(ctx.al, ctx.t);
+    return;
+  }
+  if (!ctx.al.notas) ctx.al.notas = {};
+  ctx.al.notas[ctx.t.id] = num;
+  modoCargaNotas.editando = false;
+  modoCargaNotas.buffer = '';
+  guardadoDebounced();
+  rerenderCeldaNotaCargaRapida(ctx.al, ctx.t);
+  // Actualizar el promedio del alumno (columna resumen) sin re-renderizar toda la tabla
+  programarActualizacionPromediosAlumno(ctx.al);
+}
+
+function borrarNotaCargaRapidaActual() {
+  const ctx = obtenerCeldaCargaNotas();
+  if (!ctx) return;
+  if (ctx.al.notas && ctx.t.id in ctx.al.notas) {
+    delete ctx.al.notas[ctx.t.id];
+    guardadoDebounced();
+    rerenderCeldaNotaCargaRapida(ctx.al, ctx.t);
+    programarActualizacionPromediosAlumno(ctx.al);
+  }
+  modoCargaNotas.editando = false;
+  modoCargaNotas.buffer = '';
+}
+
+function rerenderCeldaNotaCargaRapida(al, t) {
+  // Re-render quirúrgico de una sola celda de nota (sin re-renderizar toda la tabla)
+  const sel = `td.celda-nota-valorativa[onclick*="'${al.id}'"][onclick*="'${t.id}'"]`;
+  const celda = document.querySelector(sel);
+  if (!celda) return;
+  const nota = calcularNotaTrabajo(al, t);
+  const cat = categoriaDeNota(nota);
+  if (cat) {
+    celda.innerHTML = `<span class="valor-display nota-${cat.clase}">${cat.sigla}</span>`;
+    celda.setAttribute('data-tip-rich-titulo', `${cat.label} · ${nota.toFixed(2)}`);
+  } else {
+    celda.innerHTML = `<span class="valor-display" style="color:var(--texto-tenue); background:transparent;">—</span>`;
+    celda.setAttribute('data-tip-rich-titulo', `Sin nota`);
+  }
+}
+
+let _promediosTimer = null;
+function programarActualizacionPromediosAlumno(al) {
+  clearTimeout(_promediosTimer);
+  _promediosTimer = setTimeout(() => {
+    const activo = obtenerCursoActivo();
+    if (!activo) return;
+    // Buscar la fila de este alumno
+    const span = document.querySelector(`tr td.col-alumno span.alumno-nombre-clickeable[onclick*="'${al.id}'"]`);
+    if (!span) return;
+    const tr = span.closest('tr');
+    if (!tr) return;
+    const colResumen = tr.querySelector('td.col-resumen');
+    if (!colResumen) return;
+    const prom = calcularPromedioAlumno(al, activo.curso.trabajos);
+    const promTxt = prom !== null ? prom.toFixed(2) : '—';
+    const cat = prom !== null ? categoriaDeNota(prom) : null;
+    const color = cat
+      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
+      : 'var(--texto-tenue)';
+    colResumen.innerHTML = `<span style="color:${color}; font-weight:700;">${promTxt}</span>`;
+    colResumen.setAttribute('data-tip', cat ? `Promedio: ${promTxt} (${cat.label})` : 'Sin notas suficientes para calcular promedio');
+  }, 200);
+}
+
+// Handler global de teclado para el modo carga rápida de NOTAS
+document.addEventListener('keydown', (e) => {
+  if (!modoCargaNotas.activo) return;
+  const target = e.target;
+  const enCampo = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+  if (enCampo && e.key !== 'Escape') return;
+  if (document.querySelector('.modal-overlay.activo')) return;
+
+  const k = e.key;
+  if (k === 'Escape') {
+    if (modoCargaNotas.editando) {
+      // Cancelar edición del buffer y volver al valor previo
+      modoCargaNotas.editando = false;
+      modoCargaNotas.buffer = '';
+      const ctx = obtenerCeldaCargaNotas();
+      if (ctx) rerenderCeldaNotaCargaRapida(ctx.al, ctx.t);
+      return;
+    }
+    salirModoCargaRapidaNotas();
+    return;
+  }
+
+  // Si estamos editando un buffer, las teclas modifican el buffer
+  if (modoCargaNotas.editando) {
+    if (k === 'Enter') {
+      e.preventDefault();
+      confirmarBufferCargaNotas();
+      // Después de confirmar, avanzar al siguiente alumno (bajar)
+      const ctx = obtenerCeldaCargaNotas();
+      if (ctx && modoCargaNotas.alumnoIdx < ctx.ordenados.length - 1) {
+        modoCargaNotas.alumnoIdx++;
+      }
+      actualizarFocoCargaNotas();
+      return;
+    }
+    if (k === 'Tab') {
+      e.preventDefault();
+      confirmarBufferCargaNotas();
+      moverFocoCargaNotas(e.shiftKey ? -1 : 1, 0);
+      return;
+    }
+    if (k === 'Backspace') {
+      e.preventDefault();
+      modoCargaNotas.buffer = modoCargaNotas.buffer.slice(0, -1);
+      pintarBufferCargaNotas();
+      return;
+    }
+    // Solo permitimos dígitos, punto y coma
+    if (/^[0-9]$/.test(k) || k === '.' || k === ',') {
+      e.preventDefault();
+      // Validar que no haya más de un separador decimal
+      const sep = k === ',' ? '.' : k;
+      if (sep === '.' && modoCargaNotas.buffer.includes('.')) return;
+      modoCargaNotas.buffer += sep;
+      pintarBufferCargaNotas();
+      return;
+    }
+    // Flechas mientras editando: confirmar primero y mover
+    if (k === 'ArrowRight') { e.preventDefault(); confirmarBufferCargaNotas(); moverFocoCargaNotas(1, 0); return; }
+    if (k === 'ArrowLeft')  { e.preventDefault(); confirmarBufferCargaNotas(); moverFocoCargaNotas(-1, 0); return; }
+    if (k === 'ArrowDown')  { e.preventDefault(); confirmarBufferCargaNotas(); moverFocoCargaNotas(0, 1); return; }
+    if (k === 'ArrowUp')    { e.preventDefault(); confirmarBufferCargaNotas(); moverFocoCargaNotas(0, -1); return; }
+    return;
+  }
+
+  // No editando: las teclas navegan o inician edición
+  if (k === 'ArrowRight') { e.preventDefault(); moverFocoCargaNotas(1, 0); return; }
+  if (k === 'ArrowLeft')  { e.preventDefault(); moverFocoCargaNotas(-1, 0); return; }
+  if (k === 'ArrowDown')  { e.preventDefault(); moverFocoCargaNotas(0, 1); return; }
+  if (k === 'ArrowUp')    { e.preventDefault(); moverFocoCargaNotas(0, -1); return; }
+  if (k === 'Tab')        { e.preventDefault(); moverFocoCargaNotas(e.shiftKey ? -1 : 1, 0); return; }
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); borrarNotaCargaRapidaActual(); return; }
+  if (k === 'Enter') {
+    e.preventDefault();
+    // Enter en celda con rúbrica abre el modal; en celda simple inicia edición vacía
+    const ctx = obtenerCeldaCargaNotas();
+    if (!ctx) return;
+    const tieneRubrica = ctx.t.criterios && ctx.t.criterios.length > 0;
+    if (tieneRubrica) {
+      abrirNotasCriterios(ctx.al.id, ctx.t.id);
+    } else {
+      iniciarEdicionBufferCargaNotas('');
+    }
+    return;
+  }
+  // Cualquier dígito inicia edición con ese dígito
+  if (/^[0-9]$/.test(k) || k === '.' || k === ',') {
+    e.preventDefault();
+    iniciarEdicionBufferCargaNotas(k === ',' ? '.' : k);
+    return;
+  }
 });
 
 // Edición inline de nota simple (sin rúbrica)
@@ -4641,6 +5137,7 @@ function abrirMailDesdeModal() {
 function cambiarTab(tab) {
   estado.tabActiva = tab;
   if (tab !== 'asistencias') modoCarga.activo = false; // M1
+  if (tab !== 'notas') modoCargaNotas.activo = false;
   guardarEstado();
   renderMain();
 }
@@ -5683,6 +6180,68 @@ window.addEventListener('scroll', () => {
   if (window.scrollY > 400) btn.classList.add('visible');
   else btn.classList.remove('visible');
 }, { passive: true });
+
+// Tooltip flotante para celdas de nota.
+// Usa delegación de eventos: un solo listener en document.body atiende a cualquier celda
+// con data-tip-rich-titulo. Como el tooltip se renderiza en position:fixed, no se ve
+// afectado por el overflow:auto del .tabla-wrap (que recortaba los tooltips CSS clásicos).
+(function setupTooltipRich() {
+  const tip = document.getElementById('tooltip-rich');
+  if (!tip) return;
+  const tituloEl = tip.querySelector('.titulo');
+  const detalleEl = tip.querySelector('.detalle');
+  let elActual = null;
+  let raf = null;
+
+  function posicionar(el) {
+    const r = el.getBoundingClientRect();
+    // Medimos el tooltip (asumiendo que ya tiene contenido)
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    const margen = 8;
+    // Por defecto debajo de la celda, centrado
+    let x = r.left + (r.width / 2) - (tw / 2);
+    let y = r.bottom + margen;
+    // Clamp horizontal al viewport
+    const maxX = window.innerWidth - tw - 6;
+    if (x < 6) x = 6;
+    if (x > maxX) x = maxX;
+    // Si no entra abajo, ponerlo arriba
+    if (y + th > window.innerHeight - 6) y = r.top - th - margen;
+    if (y < 6) y = 6;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+
+  document.body.addEventListener('mouseover', (e) => {
+    const t = e.target.closest('[data-tip-rich-titulo]');
+    if (!t || t === elActual) return;
+    elActual = t;
+    tituloEl.textContent = t.getAttribute('data-tip-rich-titulo') || '';
+    // El detalle puede traer HTML (escapeado ya en el render)
+    detalleEl.innerHTML = t.getAttribute('data-tip-rich-detalle') || '';
+    // Render -> medir -> posicionar -> mostrar (en próximo frame para tener offsetWidth/Height)
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      posicionar(t);
+      tip.classList.add('visible');
+    });
+  });
+
+  document.body.addEventListener('mouseout', (e) => {
+    const t = e.target.closest('[data-tip-rich-titulo]');
+    if (!t) return;
+    // Si el mouse pasó a otro elemento con tooltip rich, el mouseover se va a encargar
+    const dest = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip-rich-titulo]');
+    if (dest === t) return;
+    tip.classList.remove('visible');
+    elActual = null;
+  });
+
+  // Si la tabla scrollea o la ventana cambia tamaño, reposicionar (o esconder)
+  window.addEventListener('scroll', () => { if (elActual) posicionar(elActual); }, { passive: true, capture: true });
+  window.addEventListener('resize', () => { tip.classList.remove('visible'); elActual = null; });
+})();
 
 // =========================================================
 // INIT
