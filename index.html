@@ -6,7 +6,7 @@
 <meta name="description" content="Gestor de Clases — administración de asistencias, notas y comunicación con alumnos para docentes.">
 <meta name="theme-color" content="#0f766e">
 <title>Gestor de Clases</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f766e'/><text x='50%25' y='52%25' font-size='18' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,sans-serif' fill='white'>📚</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f766e'/><rect x='9' y='8' width='14' height='17' rx='1.5' fill='none' stroke='white' stroke-width='1.6'/><line x1='12' y1='13' x2='20' y2='13' stroke='white' stroke-width='1.4' stroke-linecap='round'/><line x1='12' y1='16.5' x2='20' y2='16.5' stroke='white' stroke-width='1.4' stroke-linecap='round'/><line x1='12' y1='20' x2='17' y2='20' stroke='white' stroke-width='1.4' stroke-linecap='round'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -71,10 +71,10 @@ input, select { font: inherit; }
     --fondo-alt: #1c1c1c;
     --fondo-panel: #1e1e1e;
     --texto: #ededed;
-    --texto-suave: #b0b0b0;
-    --texto-tenue: #7a7a7a;
-    --borde: #2a2a2a;
-    --borde-fuerte: #3a3a3a;
+    --texto-suave: #bcbcbc;
+    --texto-tenue: #9a9a9a;
+    --borde: #2f2f2f;
+    --borde-fuerte: #444444;
 
     --acento: #2dd4bf;
     --acento-hover: #14b8a6;
@@ -914,8 +914,9 @@ th.col-fecha.dia-especial::after {
 }
 td.celda-asistencia.dia-especial {
   background: var(--info-suave) !important;
-  cursor: default;
-  pointer-events: none;
+  cursor: help;
+  /* Bug fix: pointer-events:none ocultaba el tooltip con el motivo del día especial.
+     Permitimos el hover (para el tooltip) pero deshabilitamos el click vía JS. */
 }
 td.celda-asistencia.dia-especial .estado-chip {
   background: transparent;
@@ -1007,6 +1008,276 @@ select option {
   transition: all var(--t-rapido);
 }
 .btn-limpiar-filtros:hover { color: var(--bad); background: var(--bad-suave); }
+
+/* M3 — Campo de búsqueda en toolbar */
+.busqueda-grupo {
+  padding: 0.25rem 0.5rem !important;
+  min-width: 180px;
+}
+.busqueda-icono {
+  font-size: 0.85rem;
+  opacity: 0.55;
+  filter: grayscale(1);
+  user-select: none;
+}
+.busqueda-input {
+  border: 0;
+  background: transparent;
+  color: var(--texto);
+  font-size: var(--fs-sm);
+  padding: 0.3rem 0.2rem;
+  width: 100%;
+  font-family: inherit;
+  outline: none;
+}
+.busqueda-input::placeholder { color: var(--texto-tenue); }
+.busqueda-clear {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+  border-radius: 999px;
+  transition: all var(--t-rapido);
+  flex-shrink: 0;
+}
+.busqueda-clear:hover { color: var(--bad); background: var(--bad-suave); }
+
+/* M5 — Botón volver arriba (visible solo si la página tiene scroll suficiente) */
+.btn-volver-arriba {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  width: 44px;
+  height: 44px;
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 999px;
+  color: var(--texto);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--sombra-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-medio), transform var(--t-medio), background var(--t-rapido), color var(--t-rapido);
+  z-index: 800;
+}
+.btn-volver-arriba.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+.btn-volver-arriba:hover {
+  background: var(--acento);
+  color: #fff;
+  border-color: var(--acento);
+}
+
+/* M1 — Foco visible en celdas durante modo carga rápida */
+td.celda-asistencia.focus-celda {
+  outline: 2px solid var(--acento);
+  outline-offset: -2px;
+  background: var(--acento-suave) !important;
+  z-index: 5;
+  position: relative;
+}
+.modo-carga-rapida-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--acento-suave);
+  color: var(--acento);
+  border: 1px solid var(--acento);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-sm);
+  border-left: 3px solid var(--acento);
+}
+.modo-carga-rapida-banner kbd {
+  background: var(--fondo-panel);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-family: var(--fuente-mono, ui-monospace, 'SF Mono', monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--texto);
+  margin: 0 0.05rem;
+}
+.modo-carga-rapida-banner .salir {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-rapido);
+}
+.modo-carga-rapida-banner .salir:hover { background: var(--acento); color: #fff; }
+
+/* M13 — Papelera (item en sidebar) */
+.papelera-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--borde);
+  font-size: 0.82rem;
+}
+.papelera-item:last-child { border-bottom: 0; }
+.papelera-item .info {
+  flex: 1;
+  min-width: 0;
+}
+.papelera-item .info .tipo {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+.papelera-item .info .nombre {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.papelera-item .info .meta {
+  font-size: 0.7rem;
+  color: var(--texto-tenue);
+  margin-top: 0.1rem;
+}
+.papelera-item .acciones {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+.papelera-item .acciones button {
+  background: transparent;
+  border: 1px solid var(--borde-fuerte);
+  color: var(--texto-suave);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: var(--radio-sm);
+  transition: all var(--t-rapido);
+}
+.papelera-item .acciones .restaurar:hover { border-color: var(--ok); color: var(--ok); background: var(--ok-suave); }
+.papelera-item .acciones .eliminar:hover { border-color: var(--bad); color: var(--bad); background: var(--bad-suave); }
+
+/* M12 — Tarjeta del alumno (modal) */
+.tarjeta-alumno .seccion {
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--borde);
+}
+.tarjeta-alumno .seccion:last-child { border-bottom: 0; margin-bottom: 0; }
+.tarjeta-alumno h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  font-weight: 600;
+}
+.tarjeta-alumno .stats-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+}
+.tarjeta-alumno .stat-mini {
+  background: var(--fondo-alt);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radio-sm);
+}
+.tarjeta-alumno .stat-mini .label {
+  font-size: 0.7rem;
+  color: var(--texto-tenue);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tarjeta-alumno .stat-mini .valor {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+.tarjeta-alumno .notas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.tarjeta-alumno .nota-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: var(--fondo-alt);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+}
+.tarjeta-alumno .nota-row .nombre-trabajo {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 0.5rem;
+}
+.tarjeta-alumno .alerta-mini {
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  margin-bottom: 0.5rem;
+}
+.alumno-nombre-clickeable {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--t-rapido);
+}
+.alumno-nombre-clickeable:hover { border-bottom-color: var(--acento); }
+
+/* M8 — Importar alumnos (textarea) */
+.import-alumnos-info {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+  background: var(--fondo-alt);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radio-sm);
+  margin-bottom: 0.6rem;
+  border-left: 2px solid var(--acento);
+}
+.import-alumnos-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--borde-fuerte);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  font-family: var(--fuente-mono, ui-monospace, monospace);
+  resize: vertical;
+  line-height: 1.6;
+}
+.import-alumnos-textarea:focus { border-color: var(--acento); }
+.import-preview {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--fondo-alt);
+  border-radius: var(--radio-sm);
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
 
 /* Botón día especial en toolbar */
 .btn-dia-especial {
@@ -1519,7 +1790,15 @@ tr:hover .acciones-alumno { opacity: 1; }
   <!-- ========== SIDEBAR ========== -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div class="logo">📚</div>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+          <rect x="9" y="6" width="14" height="20" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="12" y1="11" x2="20" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12" y1="15" x2="20" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12" y1="19" x2="20" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12" y1="23" x2="17" y2="23" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div>
         <h1>Gestor de Clases</h1>
         <p class="subtitulo">v1.0</p>
@@ -1542,6 +1821,7 @@ tr:hover .acciones-alumno { opacity: 1; }
       <div style="margin-top:0.6rem;">
         <button class="btn-add-mini" onclick="exportarTodo()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%;" data-tip="Descargar copia de seguridad en formato JSON">⬇ Backup JSON</button>
         <button class="btn-add-mini" onclick="document.getElementById('import-input').click()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%; margin-top:0.3rem;" data-tip="Restaurar desde un archivo JSON exportado previamente">⬆ Importar JSON</button>
+        <button class="btn-add-mini" id="btn-abrir-papelera" onclick="abrirPapelera()" style="border:1px solid var(--borde); padding:0.3rem 0.5rem; width:100%; margin-top:0.3rem;" data-tip="Elementos borrados, recuperables">🗑 Papelera</button>
         <input type="file" id="import-input" accept=".json" style="display:none" onchange="importarTodo(event)">
       </div>
     </div>
@@ -1718,6 +1998,63 @@ tr:hover .acciones-alumno { opacity: 1; }
   </div>
 </div>
 
+<!-- M8 — Modal: importar alumnos pegando lista -->
+<div class="modal-overlay" id="modal-import-alumnos">
+  <div class="modal modal-grande">
+    <h3>Importar alumnos</h3>
+    <div class="import-alumnos-info">
+      Pegá la lista de alumnos, <strong>uno por línea</strong>. Podés copiar desde un Excel o un Word.
+      Las líneas vacías se ignoran. Los nombres que ya existen en el curso no se duplican.
+    </div>
+    <textarea class="import-alumnos-textarea" id="input-import-alumnos"
+              placeholder="Pérez, Juan&#10;García, María&#10;López, Ana&#10;..."
+              oninput="actualizarPreviewImport()"></textarea>
+    <div class="import-preview" id="preview-import">Pegá algo arriba para ver el preview.</div>
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cancelar</button>
+      <button class="btn btn-primario" onclick="confirmarImportAlumnos()">Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- M12 — Modal: tarjeta del alumno -->
+<div class="modal-overlay" id="modal-tarjeta-alumno">
+  <div class="modal modal-grande tarjeta-alumno">
+    <h3 id="tarjeta-alumno-titulo">Alumno</h3>
+    <div id="tarjeta-alumno-contenido"></div>
+    <div class="modal-acciones">
+      <button class="btn" onclick="cerrarModales()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- M7 — Modal genérico de confirmación destructiva -->
+<div class="modal-overlay" id="modal-confirmar">
+  <div class="modal">
+    <h3 id="confirmar-titulo">Confirmar</h3>
+    <p id="confirmar-mensaje" style="margin:0 0 0.6rem; font-size:0.9rem; color:var(--texto); line-height:1.55; white-space:pre-wrap;"></p>
+    <div class="modal-acciones">
+      <button class="btn" onclick="confirmarCancelar()" id="btn-confirmar-cancelar">Cancelar</button>
+      <button class="btn btn-peligro" onclick="confirmarOk()" id="btn-confirmar-ok">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- M13 — Modal Papelera -->
+<div class="modal-overlay" id="modal-papelera">
+  <div class="modal modal-grande">
+    <h3>Papelera</h3>
+    <p style="margin:0 0 0.6rem; font-size:0.82rem; color:var(--texto-suave);">
+      Acá quedan guardados los elementos borrados. Podés <strong>restaurarlos</strong> o eliminarlos definitivamente. La papelera no se borra sola, hay que vaciarla a mano.
+    </p>
+    <div id="papelera-lista" style="border:1px solid var(--borde); border-radius:var(--radio-sm); background:var(--fondo); max-height:380px; overflow-y:auto;"></div>
+    <div class="modal-acciones">
+      <button class="btn btn-peligro" onclick="vaciarPapelera()" id="btn-vaciar-papelera" style="margin-right:auto;">Vaciar papelera</button>
+      <button class="btn" onclick="cerrarModales()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Editar nota por criterios -->
 <div class="modal-overlay" id="modal-notas-criterios">
   <div class="modal modal-grande">
@@ -1742,6 +2079,9 @@ tr:hover .acciones-alumno { opacity: 1; }
   <div class="mail-menu" id="mail-menu" onclick="event.stopPropagation()"></div>
 </div>
 
+<!-- M5 — Botón volver arriba (aparece al hacer scroll) -->
+<button class="btn-volver-arriba" id="btn-volver-arriba" onclick="volverArriba()" data-tip="Volver al inicio de la página" data-tip-pos="up" aria-label="Volver arriba">↑</button>
+
 <script>
 // =========================================================
 // ESTADO Y PERSISTENCIA
@@ -1765,7 +2105,9 @@ let estado = {
   ordenAsist: 'manual',     // manual | az | za | asistDesc | asistAsc | estadoLibres
   filtroAsist: 'todos',     // todos | libres | regulares
   ordenNotas: 'manual',     // manual | az | za | promDesc | promAsc | estadoPeligro
-  filtroNotas: 'todos'      // todos | aprobados | desaprobados | peligro | conMensaje | sinMensaje
+  filtroNotas: 'todos',     // todos | aprobados | desaprobados | peligro | conMensaje | sinMensaje
+  busqueda: '',             // Búsqueda de alumnos por nombre (compartida entre tabs)
+  papelera: []              // Items borrados recuperables (M13)
 };
 let modoEdicion = { tipo: null, escuelaId: null };
 
@@ -1822,7 +2164,13 @@ function generarFechasClase(curso) {
 }
 
 function fechaKey(d) {
-  return d.toISOString().slice(0, 10);
+  // Bug fix: NO usar toISOString(). En zonas con offset negativo (UTC-3, etc.),
+  // toISOString() puede devolver el día anterior porque convierte de hora local a UTC.
+  // Construimos la clave en hora local manualmente.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function fechaCorta(d) {
@@ -1848,12 +2196,13 @@ const UMBRAL_PELIGRO_TRABAJOS = 3; // trabajos sin entregar antes de alertar
 function categoriaDeNota(n) {
   if (n === '' || n === null || n === undefined || isNaN(n)) return null;
   const num = Number(n);
-  if (num < 1 || num > 10) return null; // Fuera del rango válido
+  if (num < 1 || num > 10.001) return null; // Fuera del rango válido (tolerancia para float)
   if (num < 6) return { clase: 'Regular', label: 'Regular', sigla: 'R' };
   if (num < 8) return { clase: 'Bien', label: 'Bien', sigla: 'B' };
-  if (num < 10) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
-  if (num === 10) return { clase: 'Excelente', label: 'Excelente', sigla: 'E' };
-  return null;
+  if (num < 9.995) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
+  // Bug fix: una nota calculada (ej. con rúbrica) puede dar 9.999999... o 10.0000001
+  // por errores de punto flotante. Usamos un umbral en vez de === 10.
+  return { clase: 'Excelente', label: 'Excelente', sigla: 'E' };
 }
 
 // Calcula la nota final de un trabajo para un alumno
@@ -1898,6 +2247,13 @@ function tieneNotaCargada(alumno, trabajo) {
 // =========================================================
 function renderSidebar() {
   const cont = document.getElementById('lista-escuelas');
+  // M13 — actualizar contador del botón papelera
+  const btnPap = document.getElementById('btn-abrir-papelera');
+  if (btnPap) {
+    const n = (estado.papelera || []).length;
+    btnPap.textContent = n > 0 ? `🗑 Papelera (${n})` : '🗑 Papelera';
+  }
+
   if (estado.escuelas.length === 0) {
     cont.innerHTML = '<p style="font-size:0.8rem; color:var(--texto-tenue); margin:0.4rem 0 0.8rem; line-height:1.5;">Todavía no hay escuelas creadas. Empezá creando una abajo.</p>';
     return;
@@ -1937,13 +2293,83 @@ function toggleEscuela(id) {
 // RENDER MAIN
 // =========================================================
 function renderMain() {
+  // M4 — Antes de reescribir el DOM, guardamos scroll y foco para restaurarlos
+  const ui = preservarUI();
+  _renderMainCore();
+  // Restauración: dejamos que el DOM se asiente un frame antes de tocarlo
+  requestAnimationFrame(() => restaurarUI(ui));
+}
+
+// M4 — Preservar scroll de la página, de la tabla, y foco del input activo
+function preservarUI() {
+  const data = {
+    scrollY: window.scrollY,
+    scrollTablaLeft: 0,
+    scrollTablaTop: 0,
+    focusId: null,
+    selStart: null,
+    selEnd: null
+  };
+  const tabla = document.querySelector('.tabla-wrap');
+  if (tabla) {
+    data.scrollTablaLeft = tabla.scrollLeft;
+    data.scrollTablaTop = tabla.scrollTop;
+  }
+  const act = document.activeElement;
+  if (act && act.id && (act.tagName === 'INPUT' || act.tagName === 'TEXTAREA' || act.tagName === 'SELECT')) {
+    data.focusId = act.id;
+    // Guardar posición del cursor en text/textarea (no aplica en select/number)
+    if ((act.tagName === 'INPUT' && ['text', 'email', 'search'].includes(act.type)) || act.tagName === 'TEXTAREA') {
+      try {
+        data.selStart = act.selectionStart;
+        data.selEnd = act.selectionEnd;
+      } catch(e) {}
+    }
+  }
+  return data;
+}
+
+function restaurarUI(data) {
+  if (!data) return;
+  // Restaurar scroll de la página
+  if (data.scrollY) window.scrollTo(0, data.scrollY);
+  // Restaurar scroll de la tabla
+  const tabla = document.querySelector('.tabla-wrap');
+  if (tabla) {
+    tabla.scrollLeft = data.scrollTablaLeft;
+    tabla.scrollTop = data.scrollTablaTop;
+  }
+  // Restaurar foco. Excepción: si hay un modal abierto, el modal tiene sus propios focos
+  // (no queremos competir con eso); en ese caso no restauramos.
+  if (data.focusId && !document.querySelector('.modal-overlay.activo')) {
+    const el = document.getElementById(data.focusId);
+    if (el && document.activeElement !== el) {
+      try {
+        el.focus({ preventScroll: true });
+        if (data.selStart !== null && data.selEnd !== null) {
+          el.setSelectionRange(data.selStart, data.selEnd);
+        }
+      } catch(e) {}
+    }
+  }
+}
+
+function _renderMainCore() {
   const main = document.getElementById('main');
   const activo = obtenerCursoActivo();
 
   if (!activo) {
     main.innerHTML = `
       <div class="empty-state">
-        <div class="icono">📋</div>
+        <div class="icono">
+          <svg viewBox="0 0 32 32" width="56" height="56" xmlns="http://www.w3.org/2000/svg" style="opacity:0.45;">
+            <rect x="9" y="6" width="14" height="20" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="12" y1="11" x2="20" y2="11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <line x1="12" y1="15" x2="20" y2="15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <line x1="12" y1="19" x2="20" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <line x1="12" y1="23" x2="17" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </div>
         <h2>Bienvenido al gestor de clases</h2>
         <p>Empezá creando una <strong>escuela</strong> desde el panel izquierdo, después agregá un <strong>curso</strong> con los días en que lo dictás, y ya vas a poder cargar alumnos, asistencias y notas.</p>
         <button class="btn btn-primario" onclick="abrirModalEscuela()" style="margin-top:0.5rem;">+ Crear primera escuela</button>
@@ -1990,14 +2416,30 @@ function renderMain() {
 function renderAsistencias(curso, fechas) {
   const cont = document.getElementById('tab-contenido');
 
+  // M1 — Banner del modo carga rápida (solo si está activo)
+  const bannerCarga = modoCarga.activo ? `
+    <div class="modo-carga-rapida-banner">
+      <span style="font-weight:600;">⌨ Modo carga rápida activo</span>
+      <span style="color:var(--texto-suave);">
+        Teclas: <kbd>P</kbd> <kbd>A</kbd> <kbd>J</kbd> <kbd>T</kbd> · <kbd>Espacio</kbd> vacía ·
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mueve · <kbd>Esc</kbd> sale
+      </span>
+      <button class="salir" onclick="salirModoCargaRapida()">Salir</button>
+    </div>
+  ` : '';
+
   if (curso.alumnos.length === 0) {
-    cont.innerHTML = renderTablaAsistencias(curso, fechas);
+    cont.innerHTML = bannerCarga + renderTablaAsistencias(curso, fechas);
   } else {
     const libres = curso.alumnos.filter(al => calcularResumenAlumno(al, fechas, curso).libre);
     const alertaLibres = libres.length > 0
       ? `<div class="alerta-bad"><span style="font-size:1.2rem;">⚠</span> <span><strong>${libres.length} ${libres.length === 1 ? 'alumno está libre' : 'alumnos están libres'}</strong> por asistencia menor al ${UMBRAL_LIBRE}%: ${libres.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
       : '';
-    cont.innerHTML = renderStatsAsistencias(curso, fechas) + alertaLibres + renderTablaAsistencias(curso, fechas);
+    cont.innerHTML = bannerCarga + renderStatsAsistencias(curso, fechas) + alertaLibres + renderTablaAsistencias(curso, fechas);
+  }
+  // M1 — Restaurar el foco visual sobre la celda del modo carga rápida
+  if (modoCarga.activo) {
+    setTimeout(() => actualizarFocoCargaRapida(), 30);
   }
 }
 
@@ -2065,13 +2507,15 @@ function renderStatsAsistencias(curso, fechas) {
 
 function renderTablaAsistencias(curso, fechas) {
   // Headers de fecha (con marca de día especial)
+  // Bug fix: los tooltips por defecto van hacia arriba (bottom:100%) y la tabla
+  // tiene overflow:auto, así que en thead quedaban cortados. Forzamos pos="down".
   const headers = fechas.map(f => {
     const k = fechaKey(f);
     const motivo = diaEspecialMotivo(curso, k);
     if (motivo) {
       return `
         <th class="col-fecha dia-especial" onclick="abrirModalDiaEspecial('${k}')"
-            data-tip="${escapeHtml(fechaCompleta(f) + ' — Día especial: ' + motivo + '. No cuenta para el cálculo de asistencia. Click para editar.')}">
+            data-tip="${escapeHtml(fechaCompleta(f) + ' — Día especial: ' + motivo + '. No cuenta para el cálculo de asistencia. Click para editar.')}" data-tip-pos="down">
           <span class="fecha-dia">${f.getDate()}</span>
           <span class="fecha-mes">${MESES_NOMBRES[f.getMonth()]}</span>
         </th>
@@ -2079,7 +2523,7 @@ function renderTablaAsistencias(curso, fechas) {
     }
     return `
       <th class="col-fecha" onclick="abrirModalDiaEspecial('${k}')"
-          data-tip="${escapeHtml(fechaCompleta(f) + ' — Click para marcar como día especial (feriado, excursión, etc.)')}">
+          data-tip="${escapeHtml(fechaCompleta(f) + ' — Click para marcar como día especial (feriado, excursión, etc.)')}" data-tip-pos="down">
         <span class="fecha-dia">${f.getDate()}</span>
         <span class="fecha-mes">${MESES_NOMBRES[f.getMonth()]}</span>
       </th>
@@ -2120,7 +2564,7 @@ function renderTablaAsistencias(curso, fechas) {
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          ${escapeHtml(al.nombre)}${badgeLibre}${renderIconoMail(al)}
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgeLibre}${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -2140,6 +2584,15 @@ function renderTablaAsistencias(curso, fechas) {
 
   const toolbar = curso.alumnos.length > 0 ? `
     <div class="toolbar">
+      <div class="toolbar-grupo busqueda-grupo">
+        <span class="busqueda-icono" aria-hidden="true">🔍</span>
+        <input type="text" id="input-busqueda" class="busqueda-input" placeholder="Buscar alumno…"
+               value="${escapeHtml(estado.busqueda || '')}"
+               oninput="cambiarBusqueda(this.value)"
+               autocomplete="off"
+               data-tip="Filtra alumnos por nombre (se mantiene al cambiar de tab)">
+        ${estado.busqueda ? `<button class="busqueda-clear" onclick="cambiarBusqueda('')" data-tip="Limpiar búsqueda">×</button>` : ''}
+      </div>
       <div class="toolbar-grupo">
         <label>Ordenar</label>
         <select onchange="cambiarOrden('asist', this.value)">
@@ -2162,6 +2615,12 @@ function renderTablaAsistencias(curso, fechas) {
       <button class="btn btn-dia-especial" onclick="abrirModalDiaEspecial()" data-tip="Marcar una fecha como feriado, excursión o suspensión">
         ★ Día especial
       </button>
+      <button class="btn" onclick="marcarTodosPresentesHoy()" data-tip="Marca como presentes a todos los alumnos en la clase de hoy (o la más reciente que ya pasó)">
+        ✓ Todos presentes
+      </button>
+      <button class="btn" onclick="iniciarModoCargaRapida()" data-tip="Activá el modo carga rápida: usá P/A/J/T y las flechas para cargar la grilla con el teclado">
+        ⌨ Modo carga rápida
+      </button>
       ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('asist')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
       <div class="toolbar-info">
         ${filtroActivo ? `<span class="badge-filtro">${ETIQUETAS_FILTRO_ASIST[estado.filtroAsist]}</span>` : ''}
@@ -2183,14 +2642,17 @@ function renderTablaAsistencias(curso, fechas) {
           <tr>
             <th class="col-alumno">Alumno (${ocultos > 0 ? filtrados.length + '/' + curso.alumnos.length : curso.alumnos.length})</th>
             ${headers}
-            <th class="col-resumen" data-tip="Porcentaje de asistencia: presentes sobre clases registradas (excluyendo días especiales)">% Asist.</th>
+            <th class="col-resumen" data-tip="Porcentaje de asistencia: presentes sobre clases registradas (excluyendo días especiales)" data-tip-pos="down">% Asist.</th>
           </tr>
         </thead>
         <tbody>
           ${tablaCuerpo}
           <tr class="agregar-alumno-row">
             <td colspan="${fechas.length + 2}">
-              <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()">
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()" style="flex:1;">
+                <button class="btn-add-mini" onclick="abrirModalImportAlumnos()" data-tip="Importar varios alumnos pegando una lista" data-tip-pos="up" style="border:1px solid var(--borde-fuerte); padding:0.4rem 0.7rem; font-size:0.78rem; white-space:nowrap;">+ Importar lista</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -2287,8 +2749,16 @@ function ordenarAlumnos(alumnos, criterio, curso, fechas) {
 }
 
 function filtrarAlumnos(alumnos, criterio, curso, fechas) {
-  if (criterio === 'todos') return alumnos;
-  return alumnos.filter(al => {
+  // Filtro de búsqueda por nombre (insensible a may/min y acentos)
+  let base = alumnos;
+  const q = (estado.busqueda || '').trim();
+  if (q) {
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const qn = norm(q);
+    base = base.filter(al => norm(al.nombre).includes(qn));
+  }
+  if (criterio === 'todos') return base;
+  return base.filter(al => {
     switch (criterio) {
       case 'libres':
         return calcularResumenAlumno(al, fechas, curso).libre;
@@ -2360,6 +2830,19 @@ function cambiarFiltro(tab, valor) {
   else estado.filtroNotas = valor;
   guardarEstado();
   renderMain();
+}
+
+// M3 - Búsqueda con debounce: aplicamos el filtro 220ms después del último tecleo
+// para no rerenderizar la tabla con cada letra. El foco del input se mantiene
+// automáticamente gracias a preservarUI() en renderMain (M4).
+let busquedaTimer = null;
+function cambiarBusqueda(valor) {
+  estado.busqueda = valor;
+  clearTimeout(busquedaTimer);
+  busquedaTimer = setTimeout(() => {
+    guardarEstado();
+    renderMain();
+  }, 220);
 }
 
 function limpiarOrdenFiltro(tab) {
@@ -2437,13 +2920,13 @@ function renderTablaNotas(curso) {
       ? `Rúbrica: ${t.criterios.map(c => c.nombre).join(' · ')}`
       : 'Sin rúbrica (nota única). Click en "Rúbrica" para agregar criterios.';
     return `
-      <th class="col-trabajo" data-tip="${escapeHtml(tipRubrica)}">
+      <th class="col-trabajo" data-tip="${escapeHtml(tipRubrica)}" data-tip-pos="down">
         <span class="trabajo-tit">
           ${escapeHtml(t.nombre)}${tieneRubrica ? `<span class="indicador-rubrica">${t.criterios.length} crit.</span>` : ''}
         </span>
         <div class="acciones-trabajo">
-          <button onclick="abrirModalRubrica('${t.id}')" data-tip="Definir criterios de evaluación">Rúbrica</button>
-          <button class="borrar" onclick="borrarTrabajo('${t.id}')" data-tip="Eliminar este trabajo y sus notas">×</button>
+          <button onclick="abrirModalRubrica('${t.id}')" data-tip="Definir criterios de evaluación" data-tip-pos="down">Rúbrica</button>
+          <button class="borrar" onclick="borrarTrabajo('${t.id}')" data-tip="Eliminar este trabajo y sus notas" data-tip-pos="down">×</button>
         </div>
       </th>
     `;
@@ -2462,17 +2945,19 @@ function renderTablaNotas(curso) {
       let display, tip;
       if (cat) {
         display = `<span class="valor-display nota-${cat.clase}">${cat.sigla}</span>`;
-        tip = `${al.nombre} · ${t.nombre} — ${cat.label} (${nota.toFixed(2)})${tieneRubrica ? ' · click para editar criterios' : ' · click para editar'}`;
+        // Bug fix: tooltip acortado para no montarse sobre columnas vecinas ni cortarse en el borde del scroll.
+        // El nombre del alumno y el trabajo ya se ven en su fila/columna, no hace falta repetirlos acá.
+        tip = `${cat.label} (${nota.toFixed(2)}) · click para ${tieneRubrica ? 'editar criterios' : 'editar'}`;
       } else {
         display = `<span class="valor-display" style="color:var(--texto-tenue); background:transparent;">—</span>`;
-        tip = `${al.nombre} · ${t.nombre} — sin nota · click para cargar`;
+        tip = `Sin nota · click para cargar`;
       }
 
       const onclick = tieneRubrica
         ? `onclick="abrirNotasCriterios('${al.id}','${t.id}')"`
         : `onclick="iniciarEdicionNotaSimple(this,'${al.id}','${t.id}')"`;
 
-      return `<td class="celda-nota-valorativa" ${onclick} data-tip="${escapeHtml(tip)}">${display}</td>`;
+      return `<td class="celda-nota-valorativa" ${onclick} data-tip="${escapeHtml(tip)}" data-tip-pos="down">${display}</td>`;
     }).join('');
 
     const prom = calcularPromedioAlumno(al, curso.trabajos);
@@ -2501,7 +2986,7 @@ function renderTablaNotas(curso) {
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          ${escapeHtml(al.nombre)}${badgePeligro}${renderIconoMail(al)}
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgePeligro}${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -2522,8 +3007,20 @@ function renderTablaNotas(curso) {
   const ordenActivo = estado.ordenNotas !== 'manual';
   const ocultos = curso.alumnos.length - filtrados.length;
 
+  // Botón "+ Trabajo": va en la toolbar si hay alumnos, o solo en una mini-toolbar si no hay.
+  const btnTrabajo = `<button class="btn btn-dia-especial" onclick="abrirModalTrabajo()" data-tip="Agregar una nueva columna de trabajo">+ Trabajo</button>`;
+
   const toolbar = curso.alumnos.length > 0 ? `
     <div class="toolbar">
+      <div class="toolbar-grupo busqueda-grupo">
+        <span class="busqueda-icono" aria-hidden="true">🔍</span>
+        <input type="text" id="input-busqueda" class="busqueda-input" placeholder="Buscar alumno…"
+               value="${escapeHtml(estado.busqueda || '')}"
+               oninput="cambiarBusqueda(this.value)"
+               autocomplete="off"
+               data-tip="Filtra alumnos por nombre (se mantiene al cambiar de tab)">
+        ${estado.busqueda ? `<button class="busqueda-clear" onclick="cambiarBusqueda('')" data-tip="Limpiar búsqueda">×</button>` : ''}
+      </div>
       <div class="toolbar-grupo">
         <label>Ordenar</label>
         <select onchange="cambiarOrden('notas', this.value)">
@@ -2547,16 +3044,17 @@ function renderTablaNotas(curso) {
           <option value="sinMensaje" ${estado.filtroNotas === 'sinMensaje' ? 'selected' : ''}>Sin mensaje</option>
         </select>
       </div>
+      ${btnTrabajo}
       ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('notas')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
       <div class="toolbar-info">
         ${filtroActivo ? `<span class="badge-filtro">${ETIQUETAS_FILTRO_NOTAS[estado.filtroNotas]}</span>` : ''}
         ${ocultos > 0 ? `<span style="margin-left:0.4rem;">${filtrados.length} de ${curso.alumnos.length}</span>` : ''}
       </div>
     </div>
-  ` : '';
+  ` : `<div class="toolbar">${btnTrabajo}</div>`;
 
   const tablaCuerpo = filas || (curso.alumnos.length > 0
-    ? `<tr><td colspan="${colspan + 1}" class="empty-filtro">Ningún alumno coincide con el filtro seleccionado.</td></tr>`
+    ? `<tr><td colspan="${colspan}" class="empty-filtro">Ningún alumno coincide con el filtro seleccionado.</td></tr>`
     : '');
 
   return `
@@ -2567,18 +3065,18 @@ function renderTablaNotas(curso) {
           <tr>
             <th class="col-alumno">Alumno (${ocultos > 0 ? filtrados.length + '/' + curso.alumnos.length : curso.alumnos.length})</th>
             ${headers}
-            <th class="col-trabajo" style="background:var(--fondo-alt);">
-              <button class="btn-add-mini" style="border:1px dashed var(--borde-fuerte); padding:0.3rem 0.6rem; color:var(--texto-suave);" onclick="abrirModalTrabajo()" data-tip="Agregar una nueva columna de trabajo">+ Trabajo</button>
-            </th>
-            <th class="col-resumen" data-tip="Promedio numérico de los trabajos cargados">Promedio</th>
-            <th class="col-mensaje" data-tip="Mensaje personalizado para el cierre del año">Mensaje de cierre</th>
+            <th class="col-resumen" data-tip="Promedio numérico de los trabajos cargados" data-tip-pos="down">Promedio</th>
+            <th class="col-mensaje" data-tip="Mensaje personalizado para el cierre del año" data-tip-pos="down">Mensaje de cierre</th>
           </tr>
         </thead>
         <tbody>
           ${tablaCuerpo}
           <tr class="agregar-alumno-row">
-            <td colspan="${colspan + 1}">
-              <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()">
+            <td colspan="${colspan}">
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <input type="text" id="input-nuevo-alumno" placeholder="+ Agregar alumno (Enter)" onkeydown="if(event.key==='Enter')agregarAlumno()" style="flex:1;">
+                <button class="btn-add-mini" onclick="abrirModalImportAlumnos()" data-tip="Importar varios alumnos pegando una lista" data-tip-pos="up" style="border:1px solid var(--borde-fuerte); padding:0.4rem 0.7rem; font-size:0.78rem; white-space:nowrap;">+ Importar lista</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -2706,7 +3204,7 @@ function abrirModalEditarCurso(cursoId) {
   setTimeout(() => document.getElementById('input-curso-nombre').focus(), 100);
 }
 
-function guardarCurso() {
+async function guardarCurso() {
   const nombre = document.getElementById('input-curso-nombre').value.trim();
   const inicio = document.getElementById('input-curso-anio-inicio').value.trim();
   const fin = document.getElementById('input-curso-anio-fin').value.trim();
@@ -2757,10 +3255,11 @@ function guardarCurso() {
         const partes = [];
         if (asistenciasHuerfanas > 0) partes.push(`${asistenciasHuerfanas} registro${asistenciasHuerfanas === 1 ? '' : 's'} de asistencia`);
         if (especialesHuerfanos > 0) partes.push(`${especialesHuerfanos} día${especialesHuerfanos === 1 ? '' : 's'} especial${especialesHuerfanos === 1 ? '' : 'es'}`);
-        const ok = confirm(
-          `Los cambios en días o fechas dejarán ${partes.join(' y ')} fuera del calendario del curso. ` +
-          `Esos datos no se borrarán automáticamente, quedarán guardados pero ocultos hasta que vuelvas a ampliar el rango.\n\n¿Continuar?`
-        );
+        const ok = await confirmarDestructivo({
+          titulo: 'Cambios fuera de rango',
+          mensaje: `Los cambios en días o fechas dejarán ${partes.join(' y ')} fuera del calendario del curso.\n\nEsos datos no se borrarán automáticamente, quedarán guardados pero ocultos hasta que vuelvas a ampliar el rango.\n\n¿Continuar?`,
+          textoOk: 'Continuar'
+        });
         if (!ok) return;
       }
     }
@@ -2831,30 +3330,58 @@ function guardarTrabajo() {
 }
 
 function cerrarModales() {
+  // Si el modal de confirmar estaba abierto, esto cuenta como cancelar
+  const confirmarAbierto = document.getElementById('modal-confirmar')?.classList.contains('activo');
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('activo'));
+  if (confirmarAbierto && _confirmarResolve) {
+    const r = _confirmarResolve; _confirmarResolve = null; r(false);
+  }
 }
 
 function seleccionarCurso(id) {
   estado.cursoActivoId = id;
+  estado.busqueda = ''; // M3: limpiar búsqueda al cambiar de curso
+  modoCarga.activo = false; // M1: salir del modo carga rápida
   guardarEstado();
   renderSidebar();
   renderMain();
 }
 
-function borrarEscuela(id) {
+async function borrarEscuela(id) {
   const esc = estado.escuelas.find(e => e.id === id);
   if (!esc) return;
-  if (!confirm(`¿Eliminar la escuela "${esc.nombre}" y todos sus cursos?`)) return;
+  const cursosTxt = esc.cursos.length === 0
+    ? 'No tiene cursos cargados.'
+    : `Tiene ${esc.cursos.length} curso${esc.cursos.length === 1 ? '' : 's'}: ${esc.cursos.map(c => c.nombre).join(', ')}.`;
+  const ok = await confirmarDestructivo({
+    titulo: 'Eliminar escuela',
+    mensaje: `¿Eliminar la escuela "${esc.nombre}" y todos sus cursos?\n\n${cursosTxt}\n\nSe guardará en la papelera por si querés recuperarla.`
+  });
+  if (!ok) return;
+  // M13: papelera
+  pushPapelera({ tipo: 'escuela', payload: JSON.parse(JSON.stringify(esc)) });
   if (esc.cursos.some(c => c.id === estado.cursoActivoId)) estado.cursoActivoId = null;
   estado.escuelas = estado.escuelas.filter(e => e.id !== id);
   guardarEstado();
   renderSidebar();
   renderMain();
-  toast('Escuela eliminada');
+  toast('Escuela movida a papelera');
 }
 
-function borrarCurso(id) {
-  if (!confirm('¿Eliminar este curso? Se perderán asistencias y notas.')) return;
+async function borrarCurso(id) {
+  // Encontrar escuela contenedora
+  let cursoRef = null, escuelaIdRef = null;
+  for (const esc of estado.escuelas) {
+    const c = esc.cursos.find(c => c.id === id);
+    if (c) { cursoRef = c; escuelaIdRef = esc.id; break; }
+  }
+  if (!cursoRef) return;
+  const ok = await confirmarDestructivo({
+    titulo: 'Eliminar curso',
+    mensaje: `¿Eliminar el curso "${cursoRef.nombre}"?\n\nIncluye ${cursoRef.alumnos.length} alumno${cursoRef.alumnos.length === 1 ? '' : 's'} y ${cursoRef.trabajos.length} trabajo${cursoRef.trabajos.length === 1 ? '' : 's'} con sus notas y asistencias.\n\nSe guardará en la papelera.`
+  });
+  if (!ok) return;
+  pushPapelera({ tipo: 'curso', payload: JSON.parse(JSON.stringify(cursoRef)), escuelaId: escuelaIdRef });
   estado.escuelas.forEach(e => {
     e.cursos = e.cursos.filter(c => c.id !== id);
   });
@@ -2862,28 +3389,55 @@ function borrarCurso(id) {
   guardarEstado();
   renderSidebar();
   renderMain();
-  toast('Curso eliminado');
+  toast('Curso movido a papelera');
 }
 
-function borrarAlumno(id) {
+async function borrarAlumno(id) {
   const activo = obtenerCursoActivo();
   if (!activo) return;
   const al = activo.curso.alumnos.find(a => a.id === id);
   if (!al) return;
-  if (!confirm(`¿Eliminar a ${al.nombre}?`)) return;
+  const ok = await confirmarDestructivo({
+    titulo: 'Eliminar alumno',
+    mensaje: `¿Eliminar a ${al.nombre}?\n\nSe perderán sus asistencias y notas, pero se guarda en la papelera por si lo necesitás recuperar.`
+  });
+  if (!ok) return;
+  // M13: guardar referencia al curso de origen para poder restaurar
+  pushPapelera({ tipo: 'alumno', payload: JSON.parse(JSON.stringify(al)), cursoId: activo.curso.id });
   activo.curso.alumnos = activo.curso.alumnos.filter(a => a.id !== id);
   guardarEstado();
   renderMain();
+  toast('Alumno movido a papelera');
 }
 
-function borrarTrabajo(id) {
+async function borrarTrabajo(id) {
   const activo = obtenerCursoActivo();
   if (!activo) return;
-  if (!confirm('¿Eliminar este trabajo? Se perderán las notas cargadas.')) return;
-  activo.curso.trabajos = activo.curso.trabajos.filter(t => t.id !== id);
+  const t = activo.curso.trabajos.find(x => x.id === id);
+  if (!t) return;
+  const ok = await confirmarDestructivo({
+    titulo: 'Eliminar trabajo',
+    mensaje: `¿Eliminar el trabajo "${t.nombre}"?\n\nSe perderán las notas cargadas. Se guarda en la papelera por si lo necesitás recuperar.`
+  });
+  if (!ok) return;
+  // M13: guardar trabajo + todas las notas asociadas para poder restaurar
+  const notasAsociadas = {};
+  activo.curso.alumnos.forEach(al => {
+    if (al.notas && al.notas[id] !== undefined) {
+      notasAsociadas[al.id] = JSON.parse(JSON.stringify(al.notas[id]));
+    }
+  });
+  pushPapelera({
+    tipo: 'trabajo',
+    payload: JSON.parse(JSON.stringify(t)),
+    cursoId: activo.curso.id,
+    notas: notasAsociadas
+  });
+  activo.curso.trabajos = activo.curso.trabajos.filter(x => x.id !== id);
   activo.curso.alumnos.forEach(a => { if (a.notas) delete a.notas[id]; });
   guardarEstado();
   renderMain();
+  toast('Trabajo movido a papelera');
 }
 
 function agregarAlumno() {
@@ -2906,6 +3460,211 @@ function agregarAlumno() {
   }, 50);
 }
 
+// =========================================================
+// M8 — IMPORTAR ALUMNOS EN MASA
+// =========================================================
+function abrirModalImportAlumnos() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  document.getElementById('input-import-alumnos').value = '';
+  document.getElementById('preview-import').textContent = 'Pegá algo arriba para ver el preview.';
+  document.getElementById('modal-import-alumnos').classList.add('activo');
+  setTimeout(() => document.getElementById('input-import-alumnos').focus(), 100);
+}
+
+function parsearNombresImport(texto) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return { nuevos: [], duplicados: [], yaExisten: [] };
+  // Normaliza nombre: trim, colapsa espacios múltiples
+  const nombres = texto.split(/\r?\n/)
+    .map(s => s.trim().replace(/\s+/g, ' '))
+    .filter(s => s.length > 0);
+  // Existencia comparada sin acentos ni mayúsculas
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const existentes = new Set(activo.curso.alumnos.map(a => norm(a.nombre)));
+  const yaVistos = new Set();
+  const nuevos = [];
+  const duplicados = []; // duplicados dentro del propio paste
+  const yaExisten = []; // ya estaban en el curso
+  for (const n of nombres) {
+    const k = norm(n);
+    if (existentes.has(k)) { yaExisten.push(n); continue; }
+    if (yaVistos.has(k)) { duplicados.push(n); continue; }
+    yaVistos.add(k);
+    nuevos.push(n);
+  }
+  return { nuevos, duplicados, yaExisten };
+}
+
+function actualizarPreviewImport() {
+  const texto = document.getElementById('input-import-alumnos').value;
+  const prev = document.getElementById('preview-import');
+  if (!texto.trim()) {
+    prev.textContent = 'Pegá algo arriba para ver el preview.';
+    return;
+  }
+  const { nuevos, duplicados, yaExisten } = parsearNombresImport(texto);
+  const partes = [];
+  partes.push(`<strong>${nuevos.length}</strong> alumno${nuevos.length === 1 ? '' : 's'} se va${nuevos.length === 1 ? '' : 'n'} a importar.`);
+  if (yaExisten.length > 0) {
+    partes.push(`${yaExisten.length} ya existe${yaExisten.length === 1 ? '' : 'n'} en el curso y se omitirá${yaExisten.length === 1 ? '' : 'n'}.`);
+  }
+  if (duplicados.length > 0) {
+    partes.push(`${duplicados.length} duplicado${duplicados.length === 1 ? '' : 's'} dentro del texto pegado se omiti${duplicados.length === 1 ? 'rá' : 'rán'}.`);
+  }
+  prev.innerHTML = partes.join(' ');
+}
+
+function confirmarImportAlumnos() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const texto = document.getElementById('input-import-alumnos').value;
+  const { nuevos } = parsearNombresImport(texto);
+  if (nuevos.length === 0) {
+    toast('No hay nombres nuevos para importar');
+    return;
+  }
+  for (const n of nuevos) {
+    activo.curso.alumnos.push({
+      id: uid(),
+      nombre: n,
+      asistencias: {},
+      notas: {}
+    });
+  }
+  cerrarModales();
+  guardarEstado();
+  renderMain();
+  toast(`${nuevos.length} alumno${nuevos.length === 1 ? '' : 's'} importado${nuevos.length === 1 ? '' : 's'}`);
+}
+
+// =========================================================
+// M12 — TARJETA DEL ALUMNO (resumen completo)
+// =========================================================
+function abrirTarjetaAlumno(alumnoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  const { curso, escuela } = activo;
+  const fechas = generarFechasClase(curso);
+  const resumen = calcularResumenAlumno(al, fechas, curso);
+  const prom = calcularPromedioAlumno(al, curso.trabajos);
+  const promCat = prom !== null ? categoriaDeNota(prom) : null;
+  const trabajosPendientes = curso.trabajos.filter(t => !tieneNotaCargada(al, t));
+  const enPeligro = trabajosPendientes.length > UMBRAL_PELIGRO_TRABAJOS;
+
+  // Stats principales
+  const colorPct = resumen.pct >= 80 ? 'var(--ok)' : resumen.pct >= 60 ? 'var(--warn)' : 'var(--bad)';
+  const colorProm = promCat
+    ? `var(--${promCat.clase === 'Regular' ? 'bad' : promCat.clase === 'Bien' ? 'warn' : promCat.clase === 'MuyBien' ? 'info' : 'ok'})`
+    : 'var(--texto-tenue)';
+
+  // Alertas
+  let alertas = '';
+  if (resumen.libre) {
+    alertas += `<div class="alerta-mini alerta-bad">⚠ <strong>LIBRE</strong> por asistencia ${resumen.pct}% (mínimo ${UMBRAL_LIBRE}%)</div>`;
+  } else if (resumen.total_registros > 0 && resumen.pct < UMBRAL_LIBRE + 10) {
+    alertas += `<div class="alerta-mini alerta-warn">⚠ Asistencia ${resumen.pct}% — cerca del límite de libre (${UMBRAL_LIBRE}%)</div>`;
+  }
+  if (enPeligro) {
+    alertas += `<div class="alerta-mini alerta-warn">⚠ <strong>EN PELIGRO</strong>: ${trabajosPendientes.length} trabajos sin entregar</div>`;
+  }
+
+  // Notas por trabajo
+  let notasHtml = '';
+  if (curso.trabajos.length === 0) {
+    notasHtml = `<p style="color:var(--texto-tenue); font-size:0.85rem;">El curso aún no tiene trabajos cargados.</p>`;
+  } else {
+    notasHtml = `<div class="notas-lista">` + curso.trabajos.map(t => {
+      const nota = calcularNotaTrabajo(al, t);
+      const cat = categoriaDeNota(nota);
+      if (cat) {
+        const colorCat = `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`;
+        return `<div class="nota-row">
+          <span class="nombre-trabajo">${escapeHtml(t.nombre)}</span>
+          <span style="color:${colorCat}; font-weight:700;">${nota.toFixed(2)} <span style="opacity:0.7; font-weight:500; font-size:0.78rem;">(${cat.label})</span></span>
+        </div>`;
+      } else {
+        return `<div class="nota-row">
+          <span class="nombre-trabajo">${escapeHtml(t.nombre)}</span>
+          <span style="color:var(--texto-tenue);">— sin nota</span>
+        </div>`;
+      }
+    }).join('') + `</div>`;
+  }
+
+  // Desglose asistencias
+  let totP = 0, totA = 0, totJ = 0, totT = 0;
+  fechas.forEach(f => {
+    const k = fechaKey(f);
+    if (diaEspecialMotivo(curso, k)) return;
+    const v = al.asistencias?.[k];
+    if (v === 'P') totP++;
+    else if (v === 'A') totA++;
+    else if (v === 'J') totJ++;
+    else if (v === 'T') totT++;
+  });
+
+  // Mensaje de cierre
+  const mensajeHtml = al.incentivo && al.incentivo.trim()
+    ? `<p style="margin:0; font-size:0.88rem; padding:0.55rem 0.75rem; background:var(--fondo-alt); border-radius:var(--radio-sm); border-left:2px solid var(--acento); white-space:pre-wrap;">${escapeHtml(al.incentivo)}</p>`
+    : `<p style="margin:0; color:var(--texto-tenue); font-style:italic; font-size:0.85rem;">No hay mensaje de cierre cargado.</p>`;
+
+  document.getElementById('tarjeta-alumno-titulo').textContent = al.nombre;
+  document.getElementById('tarjeta-alumno-contenido').innerHTML = `
+    <p style="margin:-0.4rem 0 1rem; font-size:0.82rem; color:var(--texto-suave);">
+      ${escapeHtml(escuela.nombre)} · ${escapeHtml(curso.nombre)}
+      ${al.email ? ` · <span style="color:var(--acento);">${escapeHtml(al.email)}</span>` : ''}
+    </p>
+
+    ${alertas}
+
+    <div class="seccion">
+      <h4>Resumen</h4>
+      <div class="stats-mini">
+        <div class="stat-mini">
+          <div class="label">% Asistencia</div>
+          <div class="valor" style="color:${colorPct};">${resumen.total_registros > 0 ? resumen.pct + '%' : '—'}</div>
+        </div>
+        <div class="stat-mini">
+          <div class="label">Promedio</div>
+          <div class="valor" style="color:${colorProm};">${prom !== null ? prom.toFixed(2) : '—'}</div>
+        </div>
+        <div class="stat-mini">
+          <div class="label">Clases registradas</div>
+          <div class="valor">${resumen.total_registros}</div>
+        </div>
+        <div class="stat-mini">
+          <div class="label">Trabajos sin entregar</div>
+          <div class="valor" style="color:${enPeligro ? 'var(--warn)' : 'inherit'};">${trabajosPendientes.length}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <h4>Desglose de asistencias</h4>
+      <div style="display:flex; gap:0.7rem; flex-wrap:wrap; font-size:0.85rem;">
+        <span><span class="estado-chip estado-P" style="width:22px;height:22px;line-height:22px;font-size:0.7rem;">P</span> ${totP} presente${totP === 1 ? '' : 's'}</span>
+        <span><span class="estado-chip estado-A" style="width:22px;height:22px;line-height:22px;font-size:0.7rem;">A</span> ${totA} ausente${totA === 1 ? '' : 's'}</span>
+        <span><span class="estado-chip estado-J" style="width:22px;height:22px;line-height:22px;font-size:0.7rem;">J</span> ${totJ} justificado${totJ === 1 ? '' : 's'}</span>
+        <span><span class="estado-chip estado-T" style="width:22px;height:22px;line-height:22px;font-size:0.7rem;">T</span> ${totT} tarde</span>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <h4>Notas por trabajo</h4>
+      ${notasHtml}
+    </div>
+
+    <div class="seccion">
+      <h4>Mensaje de cierre</h4>
+      ${mensajeHtml}
+    </div>
+  `;
+  document.getElementById('modal-tarjeta-alumno').classList.add('activo');
+}
+
 function ciclarAsistencia(alumnoId, fecha) {
   const activo = obtenerCursoActivo();
   if (!activo) return;
@@ -2920,6 +3679,197 @@ function ciclarAsistencia(alumnoId, fecha) {
   guardarEstado();
   renderMain();
 }
+
+// =========================================================
+// M2 — MARCAR TODOS PRESENTES (hoy o la clase más reciente)
+// =========================================================
+function fechaClaseMasReciente(curso) {
+  // Devuelve la fechaKey de la última clase del curso que sea hoy o anterior,
+  // ignorando días especiales. null si no hay ninguna.
+  const fechas = generarFechasClase(curso);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  // Recorrer al revés y devolver la primera que sea <= hoy y no sea especial
+  for (let i = fechas.length - 1; i >= 0; i--) {
+    if (fechas[i] > hoy) continue;
+    const k = fechaKey(fechas[i]);
+    if (diaEspecialMotivo(curso, k)) continue;
+    return { fechaKey: k, fecha: fechas[i] };
+  }
+  return null;
+}
+
+function marcarTodosPresentesHoy() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const { curso } = activo;
+  if (curso.alumnos.length === 0) {
+    toast('No hay alumnos para marcar');
+    return;
+  }
+  const ref = fechaClaseMasReciente(curso);
+  if (!ref) {
+    toast('No hay clases pasadas en el curso');
+    return;
+  }
+  // Contar cuántos quedaban sin marcar para feedback
+  let nuevos = 0;
+  let yaTenian = 0;
+  curso.alumnos.forEach(al => {
+    if (!al.asistencias) al.asistencias = {};
+    const actual = al.asistencias[ref.fechaKey];
+    if (actual) yaTenian++;
+    else nuevos++;
+    al.asistencias[ref.fechaKey] = 'P';
+  });
+  guardarEstado();
+  renderMain();
+  const desc = fechaCompleta(ref.fecha);
+  const partes = [];
+  if (nuevos > 0) partes.push(`${nuevos} marcado${nuevos === 1 ? '' : 's'} presente${nuevos === 1 ? '' : 's'}`);
+  if (yaTenian > 0) partes.push(`${yaTenian} ya tenía${yaTenian === 1 ? '' : 'n'} estado (sobrescrito${yaTenian === 1 ? '' : 's'})`);
+  toast(`${desc}: ${partes.join(', ')}`);
+}
+
+// =========================================================
+// M1 — MODO CARGA RÁPIDA (teclado)
+// =========================================================
+// Estado: { activo, alumnoIdx, fechaIdx }
+let modoCarga = { activo: false, alumnoIdx: 0, fechaIdx: 0 };
+
+function iniciarModoCargaRapida() {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const fechas = generarFechasClase(activo.curso);
+  if (activo.curso.alumnos.length === 0) {
+    toast('Agregá al menos un alumno antes de usar el modo carga rápida');
+    return;
+  }
+  if (fechas.length === 0) {
+    toast('El curso no tiene fechas válidas');
+    return;
+  }
+  // Buscar la primera celda no especial para arrancar
+  let fechaIdx = 0;
+  while (fechaIdx < fechas.length && diaEspecialMotivo(activo.curso, fechaKey(fechas[fechaIdx]))) {
+    fechaIdx++;
+  }
+  if (fechaIdx >= fechas.length) {
+    toast('Todas las fechas del curso son días especiales');
+    return;
+  }
+  modoCarga = { activo: true, alumnoIdx: 0, fechaIdx };
+  renderMain();
+  // Tras el render, marcar la celda con foco y scrollear
+  setTimeout(() => actualizarFocoCargaRapida(), 60);
+}
+
+function salirModoCargaRapida() {
+  modoCarga.activo = false;
+  renderMain();
+}
+
+function actualizarFocoCargaRapida() {
+  // Quitar foco previo
+  document.querySelectorAll('td.celda-asistencia.focus-celda').forEach(el => el.classList.remove('focus-celda'));
+  if (!modoCarga.activo) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const fechas = generarFechasClase(activo.curso);
+  // Usar el orden filtrado/ordenado actual para el alumno (es el orden visible)
+  const filtrados = filtrarAlumnos(activo.curso.alumnos, estado.filtroAsist, activo.curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenAsist, activo.curso, fechas);
+  if (ordenados.length === 0) return;
+  // Clampear índices
+  modoCarga.alumnoIdx = Math.max(0, Math.min(modoCarga.alumnoIdx, ordenados.length - 1));
+  modoCarga.fechaIdx = Math.max(0, Math.min(modoCarga.fechaIdx, fechas.length - 1));
+  const al = ordenados[modoCarga.alumnoIdx];
+  const fk = fechaKey(fechas[modoCarga.fechaIdx]);
+  // Buscar la celda con onclick que contenga ese alumnoId y fecha
+  const sel = `td.celda-asistencia[onclick*="'${al.id}'"][onclick*="'${fk}'"]`;
+  const celda = document.querySelector(sel);
+  if (celda) {
+    celda.classList.add('focus-celda');
+    celda.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }
+}
+
+function setEstadoCeldaCarga(estadoLetra) {
+  if (!modoCarga.activo) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const fechas = generarFechasClase(activo.curso);
+  const filtrados = filtrarAlumnos(activo.curso.alumnos, estado.filtroAsist, activo.curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenAsist, activo.curso, fechas);
+  const al = ordenados[modoCarga.alumnoIdx];
+  if (!al) return;
+  const fk = fechaKey(fechas[modoCarga.fechaIdx]);
+  if (diaEspecialMotivo(activo.curso, fk)) return; // No tocar días especiales
+  if (!al.asistencias) al.asistencias = {};
+  if (!estadoLetra || estadoLetra === '') delete al.asistencias[fk];
+  else al.asistencias[fk] = estadoLetra;
+  guardarEstado();
+  // Mover automáticamente al siguiente alumno hacia abajo, saltando los que no entran en el filtro
+  const siguienteAlumno = modoCarga.alumnoIdx + 1;
+  if (siguienteAlumno < ordenados.length) {
+    modoCarga.alumnoIdx = siguienteAlumno;
+  }
+  renderMain();
+  setTimeout(() => actualizarFocoCargaRapida(), 30);
+}
+
+function moverFocoCarga(dx, dy) {
+  if (!modoCarga.activo) return;
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const fechas = generarFechasClase(activo.curso);
+  const filtrados = filtrarAlumnos(activo.curso.alumnos, estado.filtroAsist, activo.curso, fechas);
+  const ordenados = ordenarAlumnos(filtrados, estado.ordenAsist, activo.curso, fechas);
+
+  let nuevoAlum = modoCarga.alumnoIdx + dy;
+  let nuevoFech = modoCarga.fechaIdx + dx;
+  // Saltar días especiales en horizontal
+  if (dx !== 0) {
+    while (nuevoFech >= 0 && nuevoFech < fechas.length &&
+           diaEspecialMotivo(activo.curso, fechaKey(fechas[nuevoFech]))) {
+      nuevoFech += dx > 0 ? 1 : -1;
+    }
+  }
+  nuevoAlum = Math.max(0, Math.min(nuevoAlum, ordenados.length - 1));
+  nuevoFech = Math.max(0, Math.min(nuevoFech, fechas.length - 1));
+  modoCarga.alumnoIdx = nuevoAlum;
+  modoCarga.fechaIdx = nuevoFech;
+  actualizarFocoCargaRapida();
+}
+
+// Handler global de teclado para el modo carga rápida
+document.addEventListener('keydown', (e) => {
+  if (!modoCarga.activo) return;
+  // Si el foco está en un input/textarea, no interceptar (excepto Escape)
+  const target = e.target;
+  const enCampo = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+  if (enCampo && e.key !== 'Escape') return;
+
+  // Si hay algún modal abierto, no interceptar (para no chocar con el formulario)
+  if (document.querySelector('.modal-overlay.activo')) return;
+
+  const k = e.key;
+  if (k === 'Escape') {
+    salirModoCargaRapida();
+    return;
+  }
+  if (k === 'p' || k === 'P') { e.preventDefault(); setEstadoCeldaCarga('P'); return; }
+  if (k === 'a' || k === 'A') { e.preventDefault(); setEstadoCeldaCarga('A'); return; }
+  if (k === 'j' || k === 'J') { e.preventDefault(); setEstadoCeldaCarga('J'); return; }
+  if (k === 't' || k === 'T') { e.preventDefault(); setEstadoCeldaCarga('T'); return; }
+  if (k === ' ' || k === 'Delete' || k === 'Backspace') { e.preventDefault(); setEstadoCeldaCarga(''); return; }
+  if (k === 'ArrowRight') { e.preventDefault(); moverFocoCarga(1, 0); return; }
+  if (k === 'ArrowLeft')  { e.preventDefault(); moverFocoCarga(-1, 0); return; }
+  if (k === 'ArrowDown')  { e.preventDefault(); moverFocoCarga(0, 1); return; }
+  if (k === 'ArrowUp')    { e.preventDefault(); moverFocoCarga(0, -1); return; }
+  if (k === 'Enter')      { e.preventDefault(); moverFocoCarga(0, 1); return; }
+  if (k === 'Tab')        { e.preventDefault(); moverFocoCarga(e.shiftKey ? -1 : 1, 0); return; }
+});
 
 // Edición inline de nota simple (sin rúbrica)
 function iniciarEdicionNotaSimple(celda, alumnoId, trabajoId) {
@@ -3028,7 +3978,7 @@ function quitarCriterio(idx) {
   }
 }
 
-function guardarRubrica() {
+async function guardarRubrica() {
   const activo = obtenerCursoActivo();
   if (!activo) return;
   const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
@@ -3047,7 +3997,12 @@ function guardarRubrica() {
   // Si pasamos de no-rúbrica a con-rúbrica, las notas planas se pierden.
   // Si pasamos de con-rúbrica a sin-rúbrica, también.
   if ((tieneAhora && !tendrá) || (!tieneAhora && tendrá)) {
-    if (!confirm('Cambiar el modo de evaluación borrará las notas ya cargadas para este trabajo. ¿Continuar?')) return;
+    const ok = await confirmarDestructivo({
+      titulo: 'Cambiar modo de evaluación',
+      mensaje: 'Cambiar el modo de evaluación borrará las notas ya cargadas para este trabajo.\n\n¿Continuar?',
+      textoOk: 'Continuar'
+    });
+    if (!ok) return;
     activo.curso.alumnos.forEach(al => {
       if (al.notas) delete al.notas[t.id];
     });
@@ -3071,8 +4026,13 @@ function guardarRubrica() {
   toast(criteriosValidos.length > 0 ? 'Rúbrica guardada' : 'Rúbrica eliminada');
 }
 
-function quitarRubrica() {
-  if (!confirm('¿Quitar la rúbrica? Las notas por criterio cargadas se perderán.')) return;
+async function quitarRubrica() {
+  const ok = await confirmarDestructivo({
+    titulo: 'Quitar rúbrica',
+    mensaje: '¿Quitar la rúbrica? Las notas por criterio cargadas se perderán.\n\nEsta acción NO se guarda en la papelera.',
+    textoOk: 'Quitar'
+  });
+  if (!ok) return;
   const activo = obtenerCursoActivo();
   if (!activo) return;
   const t = activo.curso.trabajos.find(x => x.id === edicionActual.trabajoId);
@@ -3680,6 +4640,7 @@ function abrirMailDesdeModal() {
 
 function cambiarTab(tab) {
   estado.tabActiva = tab;
+  if (tab !== 'asistencias') modoCarga.activo = false; // M1
   guardarEstado();
   renderMain();
 }
@@ -3690,6 +4651,11 @@ function cambiarTab(tab) {
 function exportarExcel() {
   const activo = obtenerCursoActivo();
   if (!activo) return;
+  // Bug fix: si el CDN de SheetJS no cargó (sin red, bloqueo, etc.), avisar en lugar de crashear.
+  if (typeof XLSX === 'undefined') {
+    toast('No se pudo cargar la librería de Excel. Revisá tu conexión a internet.');
+    return;
+  }
   const { escuela, curso } = activo;
   const fechas = generarFechasClase(curso);
 
@@ -3857,31 +4823,38 @@ function exportarTodo() {
 function importarTodo(event) {
   const file = event.target.files[0];
   if (!file) return;
-  let mensaje = 'Esto reemplazará todos los datos actuales. ¿Continuar?';
+  let mensaje = 'Esto reemplazará todos los datos actuales del navegador.';
   if (googleState && googleState.conectado) {
-    mensaje = 'Esto reemplazará todos los datos actuales Y también sobrescribirá lo que está guardado en tu Google Drive con los datos importados. ¿Continuar?';
+    mensaje += '\n\nAdemás, sobrescribirá lo que está guardado en tu Google Drive con los datos importados.';
   }
-  if (!confirm(mensaje)) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      // Validación mínima del esquema
-      if (typeof data !== 'object' || data === null || !Array.isArray(data.escuelas)) {
-        toast('El archivo no tiene el formato esperado (debe contener "escuelas")');
-        return;
+  mensaje += '\n\n¿Continuar?';
+  confirmarDestructivo({
+    titulo: 'Importar datos',
+    mensaje,
+    textoOk: 'Importar y reemplazar'
+  }).then(ok => {
+    if (!ok) { event.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        // Validación mínima del esquema
+        if (typeof data !== 'object' || data === null || !Array.isArray(data.escuelas)) {
+          toast('El archivo no tiene el formato esperado (debe contener "escuelas")');
+          return;
+        }
+        estado = { ...estado, ...data };
+        guardarEstado();
+        renderSidebar();
+        renderMain();
+        toast('Datos importados');
+      } catch (err) {
+        toast('Archivo inválido: ' + err.message);
       }
-      estado = { ...estado, ...data };
-      guardarEstado();
-      renderSidebar();
-      renderMain();
-      toast('Datos importados');
-    } catch (err) {
-      toast('Archivo inválido: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  });
 }
 
 // =========================================================
@@ -3900,6 +4873,30 @@ function toast(msg) {
   t.classList.add('visible');
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => t.classList.remove('visible'), 2400);
+}
+
+// M7 — Confirm custom con look de la app. Usado solo para acciones destructivas.
+// Es async para que el llamador pueda hacer: const ok = await confirmarDestructivo(...).
+let _confirmarResolve = null;
+function confirmarDestructivo({ titulo = 'Confirmar', mensaje = '', textoOk = 'Eliminar', textoCancel = 'Cancelar' } = {}) {
+  return new Promise(resolve => {
+    _confirmarResolve = resolve;
+    document.getElementById('confirmar-titulo').textContent = titulo;
+    document.getElementById('confirmar-mensaje').textContent = mensaje;
+    document.getElementById('btn-confirmar-ok').textContent = textoOk;
+    document.getElementById('btn-confirmar-cancelar').textContent = textoCancel;
+    document.getElementById('modal-confirmar').classList.add('activo');
+    // Foco al botón cancelar (más seguro)
+    setTimeout(() => document.getElementById('btn-confirmar-cancelar').focus(), 80);
+  });
+}
+function confirmarOk() {
+  document.getElementById('modal-confirmar').classList.remove('activo');
+  if (_confirmarResolve) { const r = _confirmarResolve; _confirmarResolve = null; r(true); }
+}
+function confirmarCancelar() {
+  document.getElementById('modal-confirmar').classList.remove('activo');
+  if (_confirmarResolve) { const r = _confirmarResolve; _confirmarResolve = null; r(false); }
 }
 
 // Cerrar modales con ESC o click fuera
@@ -4028,8 +5025,11 @@ function renderCuentaGoogle() {
         <div style="font-size:0.66rem; color:var(--texto-tenue); margin-bottom:0.4rem;">
           Última sincro: ${ultima}
         </div>
-        <button onclick="sincronizarConDrive(true)" ${googleState.guardandoEnDrive ? 'disabled' : ''} data-tip="Forzar guardado y descarga inmediata">
+        <button onclick="sincronizarConDrive(true)" ${googleState.guardandoEnDrive ? 'disabled' : ''} data-tip="Subir los cambios locales a Drive ahora">
           ${googleState.guardandoEnDrive ? 'Sincronizando…' : '↻ Sincronizar ahora'}
+        </button>
+        <button onclick="forzarBajarDeDrive()" ${googleState.guardandoEnDrive ? 'disabled' : ''} data-tip="Descargar la versión de Drive y reemplazar los datos locales (útil si este dispositivo quedó desactualizado o con datos incorrectos)">
+          ⬇ Cargar desde Drive
         </button>
         <button onclick="desconectarGoogle()" data-tip="Cerrar sesión (los datos permanecen en este navegador)">
           Desconectar
@@ -4111,8 +5111,13 @@ function mostrarModalGoogle() {
       <p style="font-size:0.82rem; color:var(--texto-suave);">
         Para usar la misma base desde otro dispositivo: abrí la misma URL en ese dispositivo y conectate con la misma cuenta de Google. La base se descarga automáticamente.
       </p>
+      <div class="rubrica-info" style="background:var(--warn-suave); color:var(--warn); border-left-color:var(--warn); margin-top:0.6rem;">
+        <strong>¿Algo no coincide entre dispositivos?</strong> Si este dispositivo quedó desactualizado o con datos incorrectos, podés usar
+        <strong>"⬇ Cargar desde Drive"</strong> (en el sidebar) para descartar lo local y traer la versión de Drive. Tu versión anterior queda en la papelera por las dudas.
+      </div>
       <div class="modal-acciones">
-        <button class="btn" onclick="cerrarModales()">Cerrar</button>
+        <button class="btn" onclick="forzarBajarDeDrive(); cerrarModales();">⬇ Cargar desde Drive ahora</button>
+        <button class="btn btn-primario" onclick="cerrarModales()">Cerrar</button>
       </div>
     `;
   } else {
@@ -4178,8 +5183,13 @@ function conectarGoogle() {
   tokenClient.requestAccessToken({ prompt: esReconexion ? '' : 'consent' });
 }
 
-function desconectarGoogle() {
-  if (!confirm('¿Desconectar Google Drive? Los datos quedan guardados en este navegador.')) return;
+async function desconectarGoogle() {
+  const ok = await confirmarDestructivo({
+    titulo: 'Desconectar Google Drive',
+    mensaje: '¿Desconectar la sincronización con Google Drive?\n\nLos datos quedan guardados en este navegador. Podés volver a conectarte cuando quieras.',
+    textoOk: 'Desconectar'
+  });
+  if (!ok) return;
   if (googleState.token) {
     try { google.accounts.oauth2.revoke(googleState.token, () => {}); } catch(e) {}
   }
@@ -4291,12 +5301,16 @@ async function sincronizarConDrive(forzar) {
             reemplazar = true; // Nada para perder, bajamos
           } else {
             // Hay datos locales Y datos en Drive: el usuario decide
-            reemplazar = confirm(
-              'Encontramos una base de datos guardada en tu Google Drive.\n\n' +
-              '¿Querés reemplazar los datos de este dispositivo con los de Drive?\n\n' +
-              '• Aceptar: descarga los datos de Drive y reemplaza los actuales.\n' +
-              '• Cancelar: mantiene los datos actuales y los sube a Drive (sobrescribe lo que hay).'
-            );
+            reemplazar = await confirmarDestructivo({
+              titulo: 'Datos encontrados en Drive',
+              mensaje:
+                'Encontramos una base de datos guardada en tu Google Drive.\n\n' +
+                '¿Querés reemplazar los datos de este dispositivo con los de Drive?\n\n' +
+                '• Cargar de Drive: descarga los datos de Drive y reemplaza los actuales.\n' +
+                '• Mantener locales: mantiene los datos de este dispositivo y los sube a Drive (sobrescribe lo que hay).',
+              textoOk: 'Cargar de Drive',
+              textoCancel: 'Mantener locales'
+            });
           }
           if (reemplazar) {
             estado.escuelas = remoto.escuelas;
@@ -4320,6 +5334,7 @@ async function sincronizarConDrive(forzar) {
     const resultado = await subirArchivoADrive(googleState.fileId, contenidoSubir);
     if (resultado.id) googleState.fileId = resultado.id;
     googleState.ultimaSincro = new Date().toISOString();
+    cambiosSinSincronizar = false; // M17 — todo subido, ya no hay riesgo de pérdida
     guardarSesionGoogle();
     if (forzar === true) toast('Sincronizado con Drive');
   } catch(e) {
@@ -4330,13 +5345,344 @@ async function sincronizarConDrive(forzar) {
   }
 }
 
+// Forzar bajar de Drive: descarta los datos locales y reemplaza con lo que esté en Drive.
+// Útil para resolver conflictos manualmente cuando el usuario sabe que el dispositivo
+// tiene una versión vieja o corrupta y quiere recuperar la versión "buena" del Drive.
+async function forzarBajarDeDrive() {
+  if (!googleState.conectado || !googleState.token) {
+    toast('Conectá primero tu cuenta de Google');
+    return;
+  }
+  if (googleState.guardandoEnDrive) {
+    toast('Esperá a que termine la sincronización en curso');
+    return;
+  }
+  // Resumen del estado local para que el usuario sepa qué va a perder
+  const numEsc = (estado.escuelas || []).length;
+  const numCursos = (estado.escuelas || []).reduce((a, e) => a + (e.cursos?.length || 0), 0);
+  const localResumen = numEsc === 0
+    ? 'Este dispositivo no tiene datos cargados.'
+    : `Este dispositivo tiene ${numEsc} escuela${numEsc === 1 ? '' : 's'} y ${numCursos} curso${numCursos === 1 ? '' : 's'} cargados.`;
+
+  const ok = await confirmarDestructivo({
+    titulo: 'Cargar desde Drive (descartar local)',
+    mensaje: `${localResumen}\n\nVas a descargar la base guardada en tu Google Drive y reemplazar completamente los datos de este dispositivo.\n\nTodo lo que no esté guardado en Drive se va a perder. ¿Continuar?`,
+    textoOk: 'Cargar desde Drive'
+  });
+  if (!ok) return;
+
+  // Hacer un backup local de seguridad por las dudas: lo guardamos en la papelera
+  // (no como item normal sino como snapshot, para poder recuperar si se equivoca).
+  // Lo metemos como un item especial de papelera tipo 'snapshot'.
+  try {
+    if (numEsc > 0) {
+      if (!Array.isArray(estado.papelera)) estado.papelera = [];
+      estado.papelera.unshift({
+        id: uid(),
+        tipo: 'snapshot',
+        fecha: new Date().toISOString(),
+        payload: JSON.parse(JSON.stringify({
+          escuelas: estado.escuelas,
+          cursoActivoId: estado.cursoActivoId
+        }))
+      });
+    }
+  } catch(e) { console.warn('No se pudo guardar snapshot pre-bajada', e); }
+
+  googleState.guardandoEnDrive = true;
+  renderCuentaGoogle();
+
+  try {
+    // Asegurarnos de tener el fileId
+    if (!googleState.fileId) {
+      const existente = await buscarArchivoEnDrive();
+      if (existente) googleState.fileId = existente.id;
+    }
+    if (!googleState.fileId) {
+      toast('No hay base de datos guardada en tu Drive. Subí algo primero con "Sincronizar ahora".');
+      return;
+    }
+    const remoto = await leerArchivoDeDrive(googleState.fileId);
+    if (!remoto || !Array.isArray(remoto.escuelas)) {
+      toast('El archivo de Drive no tiene formato válido');
+      return;
+    }
+    // Reemplazar
+    estado.escuelas = remoto.escuelas;
+    estado.cursoActivoId = remoto.cursoActivoId || null;
+    // Mantenemos preferencias locales (orden, filtro, búsqueda) y la papelera con el snapshot
+    googleState.ultimaSincro = new Date().toISOString();
+    cambiosSinSincronizar = false; // Acabamos de alinearnos con Drive
+    // Guardamos sin disparar otra subida (la fuente de verdad ahora es Drive)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch(e) {}
+    guardarSesionGoogle();
+    renderSidebar();
+    renderMain();
+    toast('Datos cargados desde Drive. Tu versión anterior quedó en la papelera por las dudas.');
+  } catch(e) {
+    toast('Error al bajar de Drive: ' + e.message);
+  } finally {
+    googleState.guardandoEnDrive = false;
+    renderCuentaGoogle();
+  }
+}
+
 // Hook: cuando se guarda estado local, también dispara sincronización con debounce
 let sincroTimer = null;
+// M17 — Bandera: hay cambios locales que todavía no se subieron a Drive
+let cambiosSinSincronizar = false;
 function programarSincroDrive() {
   if (!googleState.conectado) return;
+  cambiosSinSincronizar = true;
   clearTimeout(sincroTimer);
   sincroTimer = setTimeout(() => sincronizarConDrive(false), 4000); // 4 segundos de debounce
 }
+
+// M17 — Avisar al cerrar pestaña si hay cambios pendientes de subir a Drive
+window.addEventListener('beforeunload', (e) => {
+  if (googleState && googleState.conectado && cambiosSinSincronizar) {
+    e.preventDefault();
+    e.returnValue = ''; // Mensaje genérico del navegador
+    return '';
+  }
+});
+
+// =========================================================
+// M13 — PAPELERA (borrados recuperables, sin límite)
+// =========================================================
+function pushPapelera(item) {
+  if (!Array.isArray(estado.papelera)) estado.papelera = [];
+  // item = { tipo, payload, escuelaId?, cursoId?, notas? }
+  estado.papelera.unshift({
+    ...item,
+    id: uid(),
+    fecha: new Date().toISOString()
+  });
+  // Sin límite, pero el guardado en localStorage tiene un techo de ~5MB.
+  // Si en algún momento es muy grande, falla guardarEstado() y avisa.
+}
+
+function descripcionPapelera(item) {
+  if (item.tipo === 'escuela') {
+    const cursos = item.payload.cursos?.length || 0;
+    return { nombre: item.payload.nombre, meta: `${cursos} curso${cursos === 1 ? '' : 's'}` };
+  }
+  if (item.tipo === 'curso') {
+    const al = item.payload.alumnos?.length || 0;
+    const tr = item.payload.trabajos?.length || 0;
+    return { nombre: item.payload.nombre, meta: `${al} alumno${al === 1 ? '' : 's'} · ${tr} trabajo${tr === 1 ? '' : 's'}` };
+  }
+  if (item.tipo === 'alumno') {
+    const numAsist = Object.keys(item.payload.asistencias || {}).length;
+    const numNotas = Object.keys(item.payload.notas || {}).length;
+    return { nombre: item.payload.nombre, meta: `${numAsist} asistencias · ${numNotas} notas` };
+  }
+  if (item.tipo === 'trabajo') {
+    const conNota = Object.keys(item.notas || {}).length;
+    return { nombre: item.payload.nombre, meta: `${conNota} alumno${conNota === 1 ? '' : 's'} con nota` };
+  }
+  if (item.tipo === 'snapshot') {
+    const numEsc = (item.payload.escuelas || []).length;
+    const numCursos = (item.payload.escuelas || []).reduce((a, e) => a + (e.cursos?.length || 0), 0);
+    return {
+      nombre: 'Estado anterior antes de cargar desde Drive',
+      meta: `${numEsc} escuela${numEsc === 1 ? '' : 's'} · ${numCursos} curso${numCursos === 1 ? '' : 's'}`
+    };
+  }
+  return { nombre: '(desconocido)', meta: '' };
+}
+
+function abrirPapelera() {
+  renderPapelera();
+  document.getElementById('modal-papelera').classList.add('activo');
+}
+
+function renderPapelera() {
+  const cont = document.getElementById('papelera-lista');
+  const items = estado.papelera || [];
+  document.getElementById('btn-vaciar-papelera').style.display = items.length === 0 ? 'none' : '';
+  if (items.length === 0) {
+    cont.innerHTML = `<div style="padding:1.2rem; text-align:center; color:var(--texto-tenue); font-size:0.85rem;">La papelera está vacía.</div>`;
+    return;
+  }
+  cont.innerHTML = items.map(item => {
+    const d = descripcionPapelera(item);
+    const fecha = new Date(item.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+    const tipoLabel = {
+      escuela: 'Escuela',
+      curso: 'Curso',
+      alumno: 'Alumno',
+      trabajo: 'Trabajo'
+    }[item.tipo] || item.tipo;
+    return `
+      <div class="papelera-item">
+        <div class="info">
+          <div class="tipo">${tipoLabel}</div>
+          <div class="nombre">${escapeHtml(d.nombre)}</div>
+          <div class="meta">${escapeHtml(d.meta)} · borrado ${fecha}</div>
+        </div>
+        <div class="acciones">
+          <button class="restaurar" onclick="restaurarItem('${item.id}')" data-tip="Restaurar al lugar de origen" data-tip-pos="down">Restaurar</button>
+          <button class="eliminar" onclick="eliminarPapeleraItem('${item.id}')" data-tip="Borrar definitivamente" data-tip-pos="down">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function restaurarItem(itemId) {
+  const items = estado.papelera || [];
+  const idx = items.findIndex(i => i.id === itemId);
+  if (idx < 0) return;
+  const item = items[idx];
+  let exito = false;
+
+  if (item.tipo === 'snapshot') {
+    // Restaurar un snapshot reemplaza todo el contenido de escuelas/cursos.
+    // Pedimos confirmación porque es destructivo respecto del estado actual.
+    confirmarDestructivo({
+      titulo: 'Restaurar snapshot',
+      mensaje: 'Esto reemplaza tus escuelas y cursos actuales con la versión guardada en este snapshot.\n\n¿Continuar?',
+      textoOk: 'Restaurar snapshot'
+    }).then(ok => {
+      if (!ok) return;
+      // Guardamos un nuevo snapshot del estado actual antes de pisar
+      try {
+        const numEscActual = (estado.escuelas || []).length;
+        if (numEscActual > 0) {
+          estado.papelera.unshift({
+            id: uid(),
+            tipo: 'snapshot',
+            fecha: new Date().toISOString(),
+            payload: JSON.parse(JSON.stringify({
+              escuelas: estado.escuelas,
+              cursoActivoId: estado.cursoActivoId
+            }))
+          });
+        }
+      } catch(e) {}
+      estado.escuelas = item.payload.escuelas || [];
+      estado.cursoActivoId = item.payload.cursoActivoId || null;
+      // Sacarlo de la papelera (volver a buscar el índice por si el unshift cambió posiciones)
+      const j = estado.papelera.findIndex(i => i.id === itemId);
+      if (j >= 0) estado.papelera.splice(j, 1);
+      guardarEstado();
+      renderSidebar();
+      renderMain();
+      renderPapelera();
+      toast('Snapshot restaurado. El estado anterior quedó como nuevo snapshot.');
+    });
+    return;
+  }
+
+  if (item.tipo === 'escuela') {
+    // Restaurar la escuela completa al array de escuelas
+    estado.escuelas.push(item.payload);
+    exito = true;
+  } else if (item.tipo === 'curso') {
+    // Buscar la escuela original; si ya no existe, ofrecer a la primera disponible
+    const escDestino = estado.escuelas.find(e => e.id === item.escuelaId) || estado.escuelas[0];
+    if (!escDestino) {
+      toast('No hay ninguna escuela donde restaurar el curso. Creá una primero.');
+      return;
+    }
+    escDestino.cursos.push(item.payload);
+    if (escDestino.id !== item.escuelaId) {
+      toast(`Curso restaurado en "${escDestino.nombre}" (la escuela original ya no existe)`);
+    }
+    exito = true;
+  } else if (item.tipo === 'alumno') {
+    // Restaurar al curso de origen
+    let cursoDestino = null;
+    for (const esc of estado.escuelas) {
+      const c = esc.cursos.find(c => c.id === item.cursoId);
+      if (c) { cursoDestino = c; break; }
+    }
+    if (!cursoDestino) {
+      toast('El curso de origen ya no existe. No se puede restaurar el alumno.');
+      return;
+    }
+    cursoDestino.alumnos.push(item.payload);
+    exito = true;
+  } else if (item.tipo === 'trabajo') {
+    // Restaurar trabajo + notas asociadas
+    let cursoDestino = null;
+    for (const esc of estado.escuelas) {
+      const c = esc.cursos.find(c => c.id === item.cursoId);
+      if (c) { cursoDestino = c; break; }
+    }
+    if (!cursoDestino) {
+      toast('El curso de origen ya no existe. No se puede restaurar el trabajo.');
+      return;
+    }
+    cursoDestino.trabajos.push(item.payload);
+    // Restaurar notas asociadas, solo si los alumnos aún existen
+    if (item.notas) {
+      for (const [alumnoId, nota] of Object.entries(item.notas)) {
+        const al = cursoDestino.alumnos.find(a => a.id === alumnoId);
+        if (al) {
+          if (!al.notas) al.notas = {};
+          al.notas[item.payload.id] = nota;
+        }
+      }
+    }
+    exito = true;
+  }
+
+  if (!exito) return;
+  // Sacarlo de la papelera
+  estado.papelera.splice(idx, 1);
+  guardarEstado();
+  renderSidebar();
+  renderMain();
+  renderPapelera();
+  toast('Elemento restaurado');
+}
+
+async function eliminarPapeleraItem(itemId) {
+  const items = estado.papelera || [];
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  const d = descripcionPapelera(item);
+  const ok = await confirmarDestructivo({
+    titulo: 'Borrar definitivamente',
+    mensaje: `¿Borrar definitivamente "${d.nombre}"?\n\nEsta acción no se puede deshacer.`,
+    textoOk: 'Borrar definitivamente'
+  });
+  if (!ok) return;
+  estado.papelera = items.filter(i => i.id !== itemId);
+  guardarEstado();
+  renderPapelera();
+  toast('Eliminado definitivamente');
+}
+
+async function vaciarPapelera() {
+  const items = estado.papelera || [];
+  if (items.length === 0) return;
+  const ok = await confirmarDestructivo({
+    titulo: 'Vaciar papelera',
+    mensaje: `¿Eliminar definitivamente los ${items.length} elemento${items.length === 1 ? '' : 's'} de la papelera?\n\nEsta acción no se puede deshacer.`,
+    textoOk: 'Vaciar papelera'
+  });
+  if (!ok) return;
+  estado.papelera = [];
+  guardarEstado();
+  renderPapelera();
+  toast('Papelera vaciada');
+}
+
+// =========================================================
+// M5 — BOTÓN VOLVER ARRIBA
+// =========================================================
+function volverArriba() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('btn-volver-arriba');
+  if (!btn) return;
+  if (window.scrollY > 400) btn.classList.add('visible');
+  else btn.classList.remove('visible');
+}, { passive: true });
 
 // =========================================================
 // INIT
