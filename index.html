@@ -45,6 +45,9 @@ input, select { font: inherit; }
   --info-suave: rgba(37, 99, 235, 0.12);
   --bad: #dc2626;
   --bad-suave: rgba(220, 38, 38, 0.12);
+  /* MB+ (entre Muy bien y Excelente) — tono cyan/teal */
+  --mbplus: #0d9488;
+  --mbplus-suave: rgba(20, 184, 166, 0.16);
 
   --fuente-sans: 'Inter', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
 
@@ -89,6 +92,8 @@ input, select { font: inherit; }
     --warn-suave: rgba(245, 158, 11, 0.2);
     --info-suave: rgba(59, 130, 246, 0.2);
     --bad-suave: rgba(239, 68, 68, 0.2);
+    --mbplus: #2dd4bf;
+    --mbplus-suave: rgba(45, 212, 191, 0.22);
 
     --sombra-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.4);
     --sombra-md: 0 4px 12px rgba(0,0,0,0.4);
@@ -451,6 +456,39 @@ body {
   max-width: 100%;
   box-shadow: var(--sombra-sm);
 }
+
+/* Scrollbar horizontal flotante: aparece pegada al borde inferior del viewport
+   cuando la tabla tiene scroll horizontal y la tabla está visible en pantalla.
+   Espeja el scrollLeft de .tabla-wrap por JS.
+   No se muestra si la tabla entra completa horizontalmente, o si el final de
+   la tabla ya está visible (porque ahí el scrollbar nativo de la tabla alcanza). */
+#scrollbar-flotante {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--fondo-panel);
+  border-top: 1px solid var(--borde);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease-out;
+}
+#scrollbar-flotante.visible {
+  pointer-events: auto;
+  opacity: 1;
+}
+#scrollbar-flotante > .interno {
+  height: 1px; /* invisible, solo hace que aparezca la scrollbar */
+}
+@media (max-width: 800px) {
+  /* En celular no tiene sentido (no hay scrollbar nativa visible y el touch
+     funciona en cualquier parte de la tabla). */
+  #scrollbar-flotante { display: none; }
+}
 table {
   border-collapse: collapse;
   width: 100%;
@@ -592,12 +630,14 @@ td.celda-nota {
 .nota-Regular { background: var(--bad-suave); color: var(--bad); }
 .nota-Bien { background: var(--warn-suave); color: var(--warn); }
 .nota-MuyBien { background: var(--info-suave); color: var(--info); }
+.nota-MuyBienPlus { background: var(--mbplus-suave); color: var(--mbplus); }
 .nota-Excelente { background: var(--ok-suave); color: var(--ok); }
 
 @media (prefers-color-scheme: dark) {
   .nota-Regular { color: #f87171; }
   .nota-Bien { color: #fbbf24; }
   .nota-MuyBien { color: #60a5fa; }
+  .nota-MuyBienPlus { color: var(--mbplus); }
   .nota-Excelente { color: #4ade80; }
 }
 
@@ -768,6 +808,76 @@ tr.fila-libre td.col-alumno {
 }
 tr.fila-peligro td.col-alumno {
   border-left: 3px solid var(--warn);
+}
+/* Punto 12 - Fila desaprobado en tabla de notas (promedio < 6) */
+tr.fila-desaprobado td.col-alumno {
+  border-left: 3px solid var(--bad);
+}
+
+/* Punto 10 - Número de orden de carga del alumno (fijo, no cambia con orden de visualización) */
+.num-alumno {
+  display: inline-block;
+  min-width: 1.7em;
+  text-align: right;
+  margin-right: 0.35rem;
+  color: var(--texto-tenue);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+  user-select: none;
+}
+
+/* Punto 2 - Botón editar nombre del alumno (✎). Similar al btn-tarjeta. */
+.btn-editar-alumno {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.78rem;
+  line-height: 1;
+  margin-left: 0.2rem;
+  opacity: 0.35;
+  transition: all var(--t-rapido);
+  vertical-align: middle;
+}
+tr:hover .btn-editar-alumno { opacity: 0.85; }
+.btn-editar-alumno:hover {
+  color: var(--acento);
+  background: var(--hover-fila);
+  opacity: 1 !important;
+}
+/* Botón editar trabajo (en el thead) */
+.btn-editar-trabajo {
+  background: transparent;
+  border: 0;
+  color: var(--texto-tenue);
+  padding: 0.1rem 0.3rem;
+  border-radius: var(--radio-sm);
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition: all var(--t-rapido);
+}
+.btn-editar-trabajo:hover {
+  color: var(--acento);
+  background: var(--hover-fila);
+  opacity: 1 !important;
+}
+
+/* Input inline para editar nombre de alumno / trabajo */
+.edit-inline {
+  font: inherit;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--acento);
+  border-radius: var(--radio-sm);
+  padding: 0.15rem 0.4rem;
+  width: auto;
+  min-width: 120px;
+  max-width: 90%;
+  outline: none;
 }
 
 /* ---- Alerta informativa ---- */
@@ -1899,6 +2009,30 @@ tr:hover .acciones-alumno { opacity: 1; }
   /* La toolbar de filtros en mobile, que se ponga en columna si no entra */
   .toolbar { gap: 0.35rem; }
   .toolbar-info { width: 100%; margin-left: 0; margin-top: 0.2rem; }
+  /* Punto 7: el modo carga rápida es inutilizable en celular (depende de teclado físico).
+     Ocultamos los botones que lo activan. */
+  .solo-desktop { display: none !important; }
+  /* Punto 8: en celular, la columna de alumnos ocupa la mitad de la pantalla.
+     Reducimos su min-width, achicamos un poco la fuente del nombre y permitimos
+     que el contenido use elipsis o se acomode en dos líneas. */
+  td.col-alumno {
+    min-width: 130px;
+    max-width: 45vw;
+    font-size: 0.86rem;
+    padding: 0.55rem 0.5rem;
+  }
+  thead th.col-alumno {
+    min-width: 130px;
+    max-width: 45vw;
+    font-size: 0.78rem;
+  }
+  /* El nombre clickeable, en celular no necesita el subrayado punteado:
+     ya se ve que es interactivo por el botón "i" al lado. */
+  .alumno-nombre-clickeable { border-bottom: 0; }
+  /* Botones de acción del alumno (mail / tarjeta / borrar): siempre visibles
+     en mobile, porque no hay hover. */
+  .btn-mail, .btn-tarjeta { opacity: 0.85 !important; }
+  .acciones-alumno { opacity: 1 !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1926,7 +2060,6 @@ tr:hover .acciones-alumno { opacity: 1; }
       </div>
       <div>
         <h1>Gestor de Clases</h1>
-        <p class="subtitulo">v1.0</p>
       </div>
     </div>
 
@@ -1951,7 +2084,7 @@ tr:hover .acciones-alumno { opacity: 1; }
       </div>
 
       <div style="margin-top:0.85rem; padding-top:0.6rem; border-top:1px solid var(--borde); text-align:center; font-size:0.68rem; color:var(--texto-tenue); line-height:1.5; user-select:none;">
-        <div style="opacity:0.7;">v1.0.4</div>
+        <div style="opacity:0.7;">v1.0.5</div>
         <div style="opacity:0.7;">Designed by <strong style="color:var(--texto-suave); font-weight:600;">Mariano Ferraris</strong></div>
       </div>
     </div>
@@ -2228,6 +2361,9 @@ tr:hover .acciones-alumno { opacity: 1; }
 <!-- M5 — Botón volver arriba (aparece al hacer scroll) -->
 <button class="btn-volver-arriba" id="btn-volver-arriba" onclick="volverArriba()" data-tip="Volver al inicio de la página" data-tip-pos="up" aria-label="Volver arriba">↑</button>
 
+<!-- Scrollbar horizontal flotante (espeja el scroll de la tabla visible) -->
+<div id="scrollbar-flotante" aria-hidden="true"><div class="interno"></div></div>
+
 <!-- Tooltip flotante para celdas de nota (posición JS, no recortado por overflow) -->
 <div id="tooltip-rich" aria-hidden="true">
   <div class="titulo"></div>
@@ -2353,12 +2489,33 @@ function categoriaDeNota(n) {
   if (n === '' || n === null || n === undefined || isNaN(n)) return null;
   const num = Number(n);
   if (num < 1 || num > 10.001) return null; // Fuera del rango válido (tolerancia para float)
-  if (num < 6) return { clase: 'Regular', label: 'Regular', sigla: 'R' };
+  // Escala de categorías:
+  //   < 7   → Regular     (R)
+  //   7..<8 → Bien        (B)
+  //   8..<9 → Muy bien    (MB)
+  //   9..<10→ Muy bien +  (MB+)
+  //   10    → Excelente   (E)
+  if (num < 7) return { clase: 'Regular', label: 'Regular', sigla: 'R' };
   if (num < 8) return { clase: 'Bien', label: 'Bien', sigla: 'B' };
-  if (num < 9.995) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
-  // Bug fix: una nota calculada (ej. con rúbrica) puede dar 9.999999... o 10.0000001
+  if (num < 9) return { clase: 'MuyBien', label: 'Muy bien', sigla: 'MB' };
+  if (num < 9.995) return { clase: 'MuyBienPlus', label: 'Muy bien +', sigla: 'MB+' };
+  // Una nota calculada (ej. con rúbrica) puede dar 9.999999... o 10.0000001
   // por errores de punto flotante. Usamos un umbral en vez de === 10.
   return { clase: 'Excelente', label: 'Excelente', sigla: 'E' };
+}
+
+// Devuelve la variable CSS de color asociada a una categoría de nota
+// (R→bad, B→warn, MB→info, MB+→mbplus, E→ok). Usado para colorear promedios.
+function colorDeCategoria(cat) {
+  if (!cat) return 'var(--texto-tenue)';
+  switch (cat.clase) {
+    case 'Regular':     return 'var(--bad)';
+    case 'Bien':        return 'var(--warn)';
+    case 'MuyBien':     return 'var(--info)';
+    case 'MuyBienPlus': return 'var(--mbplus)';
+    case 'Excelente':   return 'var(--ok)';
+    default:            return 'var(--texto)';
+  }
 }
 
 // Calcula la nota final de un trabajo para un alumno
@@ -2587,11 +2744,9 @@ function renderAsistencias(curso, fechas) {
   if (curso.alumnos.length === 0) {
     cont.innerHTML = bannerCarga + renderTablaAsistencias(curso, fechas);
   } else {
-    const libres = curso.alumnos.filter(al => calcularResumenAlumno(al, fechas, curso).libre);
-    const alertaLibres = libres.length > 0
-      ? `<div class="alerta-bad"><span style="font-size:1.2rem;">⚠</span> <span><strong>${libres.length} ${libres.length === 1 ? 'alumno está libre' : 'alumnos están libres'}</strong> por asistencia menor al ${UMBRAL_LIBRE}%: ${libres.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
-      : '';
-    cont.innerHTML = bannerCarga + renderStatsAsistencias(curso, fechas) + alertaLibres + renderTablaAsistencias(curso, fechas);
+    // Alerta de libres removida: el badge "LIBRE" al lado del nombre y el borde
+    // izquierdo rojo de la fila ya transmiten la información sin saturar.
+    cont.innerHTML = bannerCarga + renderStatsAsistencias(curso, fechas) + renderTablaAsistencias(curso, fechas);
   }
   // M1 — Restaurar el foco visual sobre la celda del modo carga rápida
   if (modoCarga.activo) {
@@ -2604,7 +2759,10 @@ function renderStatsAsistencias(curso, fechas) {
   const totalClases = fechas.length - especiales;
   const hoy = new Date();
   hoy.setHours(0,0,0,0);
-  const clasesPasadas = fechas.filter(f => f <= hoy && !diaEspecialMotivo(curso, fechaKey(f))).length;
+  // Bug fix: "ya cursadas" no debe incluir el día de hoy, porque la clase de hoy
+  // todavía no terminó (o ni siquiera empezó). Usamos < (estricto), no <=.
+  // Tampoco contamos días especiales.
+  const clasesPasadas = fechas.filter(f => f < hoy && !diaEspecialMotivo(curso, fechaKey(f))).length;
   const totalAlumnos = curso.alumnos.length;
 
   let totalP = 0, totalA = 0, totalJ = 0, totalT = 0, totalRegistros = 0;
@@ -2690,6 +2848,11 @@ function renderTablaAsistencias(curso, fechas) {
   const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroAsist, curso, fechas);
   const ordenados = ordenarAlumnos(filtrados, estado.ordenAsist, curso, fechas);
 
+  // Mapa alumno.id → número fijo de orden de carga (1, 2, 3...).
+  // El número es la posición en el array curso.alumnos original (no en el filtrado).
+  const numFijo = new Map();
+  curso.alumnos.forEach((a, i) => numFijo.set(a.id, i + 1));
+
   const filas = ordenados.map((al) => {
     const celdas = fechas.map(f => {
       const k = fechaKey(f);
@@ -2716,11 +2879,13 @@ function renderTablaAsistencias(curso, fechas) {
     const badgeLibre = resumen.libre
       ? `<span class="badge-estado badge-libre" data-tip="Asistencia ${resumen.pct}% — por debajo del ${UMBRAL_LIBRE}% requerido. El alumno está libre." data-tip-pos="down">LIBRE</span>`
       : '';
+    const num = numFijo.get(al.id) || '';
 
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgeLibre}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button>${renderIconoMail(al)}
+          <span class="num-alumno" data-tip="Nº de orden de carga (no cambia al reordenar)" data-tip-pos="down">${num}.</span>
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgeLibre}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button><button class="btn-editar-alumno" onclick="event.stopPropagation(); iniciarEdicionNombreAlumno(this, '${al.id}')" data-tip="Editar nombre del alumno" data-tip-pos="down" aria-label="Editar">✎</button>${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -2774,7 +2939,7 @@ function renderTablaAsistencias(curso, fechas) {
       <button class="btn" onclick="marcarTodosPresentesHoy()" data-tip="Marca presentes a todos en el día más cercano que aún no tenga la asistencia cargada. En modo carga rápida, usa el día donde está el cursor.">
         ✓ Todos presentes
       </button>
-      <button class="btn" onclick="iniciarModoCargaRapida()" data-tip="Activá el modo carga rápida: usá P/A/J/T y las flechas para cargar la grilla con el teclado">
+      <button class="btn solo-desktop" onclick="iniciarModoCargaRapida()" data-tip="Activá el modo carga rápida: usá P/A/J/T y las flechas para cargar la grilla con el teclado">
         ⌨ Modo carga rápida
       </button>
       ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('asist')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
@@ -2798,7 +2963,7 @@ function renderTablaAsistencias(curso, fechas) {
           <tr>
             <th class="col-alumno">Alumno (${ocultos > 0 ? filtrados.length + '/' + curso.alumnos.length : curso.alumnos.length})</th>
             ${headers}
-            <th class="col-resumen" data-tip="Porcentaje de asistencia: presentes sobre clases registradas (excluyendo días especiales)" data-tip-pos="down">% Asist.</th>
+            <th class="col-resumen" data-tip="Porcentaje de asistencia: presentes + tardes + justificados, sobre clases registradas (excluyendo días especiales). Si baja del umbral, el alumno queda libre." data-tip-pos="down">% Asist.</th>
           </tr>
         </thead>
         <tbody>
@@ -2826,7 +2991,9 @@ function calcularResumenAlumno(al, fechas, curso) {
     const v = al.asistencias?.[k];
     if (v) {
       total_registros++;
-      if (v === 'P' || v === 'T') p++; // Tarde cuenta como presente para el %
+      // P (presente), T (tarde) y J (justificado) suman para el porcentaje.
+      // Tarde y Justificado equivalen a presente para el cálculo de libre.
+      if (v === 'P' || v === 'T' || v === 'J') p++;
     }
   });
   const pct = total_registros > 0 ? Math.round(p / total_registros * 100) : 0;
@@ -3028,18 +3195,9 @@ function renderNotas(curso) {
   ` : '';
 
   // Calcular alumnos en peligro: más de UMBRAL_PELIGRO_TRABAJOS trabajos sin nota
-  let peligro = [];
-  if (curso.trabajos.length > 0) {
-    peligro = curso.alumnos.filter(al => {
-      const sinEntregar = curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length;
-      return sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
-    });
-  }
-  const alertaPeligro = peligro.length > 0
-    ? `<div class="alerta-warn"><span style="font-size:1.2rem;">⚠</span> <span><strong>${peligro.length} ${peligro.length === 1 ? 'alumno está en peligro' : 'alumnos están en peligro'} de desaprobar</strong> (más de ${UMBRAL_PELIGRO_TRABAJOS} trabajos sin entregar): ${peligro.map(a => escapeHtml(a.nombre)).join(', ')}.</span></div>`
-    : '';
+  // (no mostramos alerta arriba: el badge "EN PELIGRO" al lado del nombre ya lo indica claramente)
 
-  cont.innerHTML = bannerCarga + renderStatsNotas(curso) + alertaPeligro + renderTablaNotas(curso);
+  cont.innerHTML = bannerCarga + renderStatsNotas(curso) + renderTablaNotas(curso);
 
   // Restaurar el foco visual de la celda al re-renderizar
   if (modoCargaNotas.activo) {
@@ -3074,12 +3232,13 @@ function renderStatsNotas(curso) {
         <div class="stat-value" style="color:var(--ok)">${aprobados}</div>
         <div class="stat-detalle">${regulares} en Regular</div>
       </div>
-      <div class="stat-card" data-tip="Escala valorativa: Regular 1-5, Bien 6-7, Muy bien 8-9, Excelente 10">
+      <div class="stat-card" data-tip="Escala valorativa: Regular &lt; 7, Bien 7, Muy bien 8, MB+ 9, Excelente 10">
         <div class="stat-label">Escala</div>
         <div class="stat-detalle" style="margin-top:0.4rem; line-height:1.8;">
-          <span class="estado-chip nota-Regular" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">R</span> 1-5 &nbsp;
-          <span class="estado-chip nota-Bien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">B</span> 6-7 &nbsp;
-          <span class="estado-chip nota-MuyBien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">MB</span> 8-9 &nbsp;
+          <span class="estado-chip nota-Regular" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">R</span> &lt;7 &nbsp;
+          <span class="estado-chip nota-Bien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">B</span> 7 &nbsp;
+          <span class="estado-chip nota-MuyBien" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">MB</span> 8 &nbsp;
+          <span class="estado-chip nota-MuyBienPlus" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">MB+</span> 9 &nbsp;
           <span class="estado-chip nota-Excelente" style="width:auto;height:auto;line-height:1;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;">E</span> 10
         </div>
       </div>
@@ -3096,7 +3255,7 @@ function renderTablaNotas(curso) {
     return `
       <th class="col-trabajo" data-tip="${escapeHtml(tipRubrica)}" data-tip-pos="down">
         <span class="trabajo-tit">
-          ${escapeHtml(t.nombre)}${tieneRubrica ? `<span class="indicador-rubrica">${t.criterios.length} crit.</span>` : ''}
+          <span class="nombre-trabajo-tit">${escapeHtml(t.nombre)}</span><button class="btn-editar-trabajo" onclick="iniciarEdicionNombreTrabajo(this, '${t.id}')" data-tip="Editar nombre del trabajo" data-tip-pos="down" aria-label="Editar">✎</button>${tieneRubrica ? `<span class="indicador-rubrica">${t.criterios.length} crit.</span>` : ''}
         </span>
         <div class="acciones-trabajo">
           <button onclick="abrirModalRubrica('${t.id}')" data-tip="Definir criterios de evaluación" data-tip-pos="down">Rúbrica</button>
@@ -3109,6 +3268,10 @@ function renderTablaNotas(curso) {
   // Filtrar y ordenar
   const filtrados = filtrarAlumnos(curso.alumnos, estado.filtroNotas, curso, []);
   const ordenados = ordenarAlumnos(filtrados, estado.ordenNotas, curso, []);
+
+  // Mapa alumno.id → número fijo de orden de carga (1, 2, 3...).
+  const numFijo = new Map();
+  curso.alumnos.forEach((a, i) => numFijo.set(a.id, i + 1));
 
   const filas = ordenados.map(al => {
     const celdas = curso.trabajos.map(t => {
@@ -3141,18 +3304,24 @@ function renderTablaNotas(curso) {
     const prom = calcularPromedioAlumno(al, curso.trabajos);
     const promTxt = prom !== null ? prom.toFixed(2) : '—';
     const cat = prom !== null ? categoriaDeNota(prom) : null;
-    const color = cat
-      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
-      : 'var(--texto-tenue)';
+    const color = colorDeCategoria(cat);
 
-    // Detección de peligro
+    // Detección de peligro (muchos trabajos sin entregar)
     const sinEntregar = curso.trabajos.length > 0
       ? curso.trabajos.filter(t => !tieneNotaCargada(al, t)).length
       : 0;
     const enPeligro = sinEntregar > UMBRAL_PELIGRO_TRABAJOS;
-    const filaClase = enPeligro ? 'fila-peligro' : '';
+    // Punto 12 — Marcado de desaprobado: promedio < 6 (solo si hay promedio calculable)
+    const desaprobado = prom !== null && prom < 6;
+    // La clase de la fila acumula marcadores. fila-desaprobado y fila-peligro
+    // pueden coexistir; visualmente se ve la fila-peligro (warn) si están las dos
+    // porque tiene mayor prioridad (el desaprobado ya está cubierto por el color del promedio).
+    const filaClase = [enPeligro ? 'fila-peligro' : '', desaprobado ? 'fila-desaprobado' : ''].filter(x => x).join(' ');
     const badgePeligro = enPeligro
       ? `<span class="badge-estado badge-peligro" data-tip="Tiene ${sinEntregar} trabajos sin entregar — en peligro de desaprobar." data-tip-pos="down">EN PELIGRO</span>`
+      : '';
+    const badgeDesaprobado = desaprobado
+      ? `<span class="badge-estado badge-libre" data-tip="Promedio ${promTxt} — por debajo de 6 (desaprobado)." data-tip-pos="down">DESAPROBADO</span>`
       : '';
 
     // Celda de mensaje (rectángulo ancho al lado del promedio)
@@ -3161,10 +3330,13 @@ function renderTablaNotas(curso) {
       ? `<span class="celda-mensaje-content" onclick="abrirModalIncentivo('${al.id}')" data-tip="Click para editar el mensaje de cierre">${escapeHtml(al.incentivo)}</span>`
       : `<span class="celda-mensaje-content vacio" onclick="abrirModalIncentivo('${al.id}')" data-tip="Click para agregar un mensaje de cierre de año">Agregar mensaje de cierre</span>`;
 
+    const num = numFijo.get(al.id) || '';
+
     return `
       <tr class="${filaClase}">
         <td class="col-alumno">
-          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgePeligro}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button>${renderIconoMail(al)}
+          <span class="num-alumno" data-tip="Nº de orden de carga (no cambia al reordenar)" data-tip-pos="down">${num}.</span>
+          <span class="alumno-nombre-clickeable" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno" data-tip-pos="down">${escapeHtml(al.nombre)}</span>${badgePeligro}${badgeDesaprobado}<button class="btn-tarjeta" onclick="abrirTarjetaAlumno('${al.id}')" data-tip="Ver tarjeta del alumno (resumen completo)" data-tip-pos="down" aria-label="Ver tarjeta">i</button><button class="btn-editar-alumno" onclick="event.stopPropagation(); iniciarEdicionNombreAlumno(this, '${al.id}')" data-tip="Editar nombre del alumno" data-tip-pos="down" aria-label="Editar">✎</button>${renderIconoMail(al)}
           <span class="acciones-alumno">
             <button onclick="borrarAlumno('${al.id}')" data-tip="Eliminar alumno">×</button>
           </span>
@@ -3223,7 +3395,7 @@ function renderTablaNotas(curso) {
         </select>
       </div>
       ${btnTrabajo}
-      <button class="btn" onclick="iniciarModoCargaRapidaNotas()" data-tip="Cargar notas con el teclado. Usá flechas para navegar, números para tipear (ej. 8.5), Enter para confirmar y bajar, Supr para borrar. Esc sale.">
+      <button class="btn solo-desktop" onclick="iniciarModoCargaRapidaNotas()" data-tip="Cargar notas con el teclado. Usá flechas para navegar, números para tipear (ej. 8.5), Enter para confirmar y bajar, Supr para borrar. Esc sale.">
         ⌨ Modo carga rápida
       </button>
       ${(filtroActivo || ordenActivo) ? `<button class="btn-limpiar-filtros" onclick="limpiarOrdenFiltro('notas')" data-tip="Volver al orden y filtro por defecto">Limpiar</button>` : ''}
@@ -3648,6 +3820,111 @@ function agregarAlumno() {
 }
 
 // =========================================================
+// EDICIÓN INLINE DE NOMBRES (alumno / trabajo)
+// =========================================================
+// Estrategia: el botón ✎ reemplaza el <span> del nombre por un <input>
+// inline en su lugar. Enter confirma, Esc cancela. Al confirmar se guarda
+// el nuevo nombre y se hace un re-render quirúrgico del span.
+function iniciarEdicionNombreAlumno(btnEl, alumnoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const al = activo.curso.alumnos.find(a => a.id === alumnoId);
+  if (!al) return;
+  // Encontrar el span del nombre (es hermano del botón, antes del badge eventual)
+  const celda = btnEl.closest('td.col-alumno');
+  if (!celda) return;
+  const spanNombre = celda.querySelector('.alumno-nombre-clickeable');
+  if (!spanNombre) return;
+  // Si ya hay un input editando, no hacer nada
+  if (celda.querySelector('input.edit-inline')) return;
+
+  const valorActual = al.nombre;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'edit-inline';
+  input.value = valorActual;
+  input.setAttribute('aria-label', 'Editar nombre del alumno');
+  spanNombre.style.display = 'none';
+  // Insertamos el input justo antes del span
+  spanNombre.parentNode.insertBefore(input, spanNombre);
+  input.focus();
+  input.select();
+
+  let yaCerrado = false;
+  const confirmar = () => {
+    if (yaCerrado) return;
+    yaCerrado = true;
+    const nuevo = input.value.trim();
+    if (nuevo && nuevo !== valorActual) {
+      al.nombre = nuevo;
+      guardarEstado();
+    }
+    renderMain();
+  };
+  const cancelar = () => {
+    if (yaCerrado) return;
+    yaCerrado = true;
+    input.remove();
+    spanNombre.style.display = '';
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmar(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
+  });
+  input.addEventListener('blur', confirmar);
+}
+
+function iniciarEdicionNombreTrabajo(btnEl, trabajoId) {
+  const activo = obtenerCursoActivo();
+  if (!activo) return;
+  const t = activo.curso.trabajos.find(x => x.id === trabajoId);
+  if (!t) return;
+  const th = btnEl.closest('th.col-trabajo');
+  if (!th) return;
+  const span = th.querySelector('.nombre-trabajo-tit');
+  if (!span) return;
+  if (th.querySelector('input.edit-inline')) return;
+
+  const valorActual = t.nombre;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'edit-inline';
+  input.value = valorActual;
+  input.style.maxWidth = '95%';
+  input.setAttribute('aria-label', 'Editar nombre del trabajo');
+  span.style.display = 'none';
+  span.parentNode.insertBefore(input, span);
+  input.focus();
+  input.select();
+
+  let yaCerrado = false;
+  const confirmar = () => {
+    if (yaCerrado) return;
+    yaCerrado = true;
+    const nuevo = input.value.trim();
+    if (nuevo && nuevo !== valorActual) {
+      t.nombre = nuevo;
+      guardarEstado();
+    }
+    renderMain();
+  };
+  const cancelar = () => {
+    if (yaCerrado) return;
+    yaCerrado = true;
+    input.remove();
+    span.style.display = '';
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmar(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
+    e.stopPropagation();
+  });
+  input.addEventListener('blur', confirmar);
+  // No queremos que el click en el header de la columna haga otra cosa
+  input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+// =========================================================
 // M8 — IMPORTAR ALUMNOS EN MASA
 // =========================================================
 function abrirModalImportAlumnos() {
@@ -3746,9 +4023,7 @@ function abrirTarjetaAlumno(alumnoId) {
 
   // Stats principales
   const colorPct = resumen.pct >= 80 ? 'var(--ok)' : resumen.pct >= 60 ? 'var(--warn)' : 'var(--bad)';
-  const colorProm = promCat
-    ? `var(--${promCat.clase === 'Regular' ? 'bad' : promCat.clase === 'Bien' ? 'warn' : promCat.clase === 'MuyBien' ? 'info' : 'ok'})`
-    : 'var(--texto-tenue)';
+  const colorProm = colorDeCategoria(promCat);
 
   // Alertas
   let alertas = '';
@@ -3770,7 +4045,7 @@ function abrirTarjetaAlumno(alumnoId) {
       const nota = calcularNotaTrabajo(al, t);
       const cat = categoriaDeNota(nota);
       if (cat) {
-        const colorCat = `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`;
+        const colorCat = colorDeCategoria(cat);
         return `<div class="nota-row">
           <span class="nombre-trabajo">${escapeHtml(t.nombre)}</span>
           <span style="color:${colorCat}; font-weight:700;">${nota.toFixed(2)} <span style="opacity:0.7; font-weight:500; font-size:0.78rem;">(${cat.label})</span></span>
@@ -3888,8 +4163,39 @@ function ciclarAsistencia(alumnoId, fecha) {
   const proximo = ESTADOS_ASIST[(idx + 1) % ESTADOS_ASIST.length];
   if (proximo === '') delete al.asistencias[fecha];
   else al.asistencias[fecha] = proximo;
-  guardarEstado();
-  renderMain();
+
+  // Actualización quirúrgica: cambiamos solo la celda y la columna resumen
+  // del alumno, sin re-renderizar TODA la tabla.
+  // Esto evita lag visible cuando el usuario clickea seguido en celular o con
+  // tablas grandes.
+  const celda = document.querySelector(`td.celda-asistencia[data-al="${alumnoId}"][data-fk="${fecha}"]`);
+  if (celda) {
+    const chip = celda.querySelector('.estado-chip');
+    if (chip) {
+      const v = al.asistencias[fecha] || '';
+      chip.className = 'estado-chip ' + (v ? 'estado-' + v : 'estado-vacio');
+      chip.textContent = v || '·';
+    }
+    // Actualizar tooltip
+    const fechas = generarFechasClase(activo.curso);
+    const fObj = fechas.find(f => fechaKey(f) === fecha);
+    if (fObj) {
+      const lblEstado = ESTADO_LABEL[proximo] || ESTADO_LABEL[''];
+      const tip = `${al.nombre} — ${fechaCompleta(fObj)} — ${lblEstado}${proximo ? '' : ' (click para marcar)'}`;
+      celda.setAttribute('data-tip', tip);
+    }
+  }
+
+  guardadoDebouncedAsist();
+  programarActualizacionStatsAsistencias();
+}
+
+let _guardadoTimerAsist = null;
+function guardadoDebouncedAsist() {
+  clearTimeout(_guardadoTimerAsist);
+  _guardadoTimerAsist = setTimeout(() => {
+    guardarEstado();
+  }, 250);
 }
 
 // =========================================================
@@ -4000,6 +4306,11 @@ let modoCarga = { activo: false, alumnoIdx: 0, fechaIdx: 0 };
 let modoCargaNotas = { activo: false, alumnoIdx: 0, trabajoIdx: 0, editando: false, buffer: '' };
 
 function iniciarModoCargaRapida() {
+  // El modo carga rápida depende de teclado físico. En móvil simplemente avisamos.
+  if (window.matchMedia('(max-width: 800px)').matches) {
+    toast('El modo carga rápida requiere teclado físico. Disponible solo en computadora.');
+    return;
+  }
   const activo = obtenerCursoActivo();
   if (!activo) return;
   const fechas = generarFechasClase(activo.curso);
@@ -4261,6 +4572,10 @@ document.addEventListener('click', (e) => {
 // MODO CARGA RÁPIDA — NOTAS (tab notas)
 // =========================================================
 function iniciarModoCargaRapidaNotas() {
+  if (window.matchMedia('(max-width: 800px)').matches) {
+    toast('El modo carga rápida requiere teclado físico. Disponible solo en computadora.');
+    return;
+  }
   const activo = obtenerCursoActivo();
   if (!activo) return;
   if (activo.curso.alumnos.length === 0) {
@@ -4438,9 +4753,7 @@ function programarActualizacionPromediosAlumno(al) {
     const prom = calcularPromedioAlumno(al, activo.curso.trabajos);
     const promTxt = prom !== null ? prom.toFixed(2) : '—';
     const cat = prom !== null ? categoriaDeNota(prom) : null;
-    const color = cat
-      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
-      : 'var(--texto-tenue)';
+    const color = colorDeCategoria(cat);
     colResumen.innerHTML = `<span style="color:${color}; font-weight:700;">${promTxt}</span>`;
     colResumen.setAttribute('data-tip', cat ? `Promedio: ${promTxt} (${cat.label})` : 'Sin notas suficientes para calcular promedio');
   }, 200);
@@ -4728,11 +5041,24 @@ function abrirNotasCriterios(alumnoId, trabajoId) {
   edicionActual.notasTemp = { ...(al.notas?.[trabajoId] || {}) };
 
   document.getElementById('notas-criterios-titulo').textContent = `${al.nombre} · ${t.nombre}`;
-  document.getElementById('notas-criterios-sub').textContent =
-    `Cargá una nota (1-10) para cada criterio. La nota final del trabajo se calcula como promedio ponderado por los pesos.`;
+  // Si estamos en modo carga rápida, mostramos un hint extra de teclado
+  const desdeCarga = modoCargaNotas.activo;
+  document.getElementById('notas-criterios-sub').innerHTML = desdeCarga
+    ? `Cargá una nota (1-10) para cada criterio. <strong>Modo carga rápida:</strong> usá <kbd>↑</kbd><kbd>↓</kbd> o <kbd>Enter</kbd>/<kbd>Tab</kbd> para moverte entre criterios. <kbd>Esc</kbd> guarda y vuelve.`
+    : `Cargá una nota (1-10) para cada criterio. La nota final del trabajo se calcula como promedio ponderado por los pesos.`;
 
   renderNotasCriteriosLista();
   document.getElementById('modal-notas-criterios').classList.add('activo');
+
+  // Foco automático en el primer criterio (sirve tanto en modo carga como sin él,
+  // pero es especialmente útil con teclado para tipear directo)
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#notas-criterios-lista input[data-criterio]');
+    if (inputs.length > 0) {
+      inputs[0].focus();
+      inputs[0].select();
+    }
+  }, 100);
 }
 
 function renderNotasCriteriosLista() {
@@ -4742,7 +5068,7 @@ function renderNotasCriteriosLista() {
   if (!t || !t.criterios) return;
 
   const cont = document.getElementById('notas-criterios-lista');
-  cont.innerHTML = t.criterios.map((c) => {
+  cont.innerHTML = t.criterios.map((c, idx) => {
     const v = edicionActual.notasTemp[c.id] ?? '';
     const cat = categoriaDeNota(v);
     const colorChip = cat ? `nota-${cat.clase}` : '';
@@ -4754,6 +5080,8 @@ function renderNotasCriteriosLista() {
         </div>
         <input type="number" min="1" max="10" step="0.1" value="${v}" placeholder="—"
           data-criterio="${c.id}"
+          data-idx-criterio="${idx}"
+          onkeydown="navegarCriterios(event, ${idx})"
           oninput="onCriterioInput('${c.id}', this.value)">
         <div style="text-align:center;">
           <span class="valor-display ${colorChip}" id="chip-${c.id}" style="${cat ? '' : 'color:var(--texto-tenue);background:transparent;'}">${cat ? cat.sigla : '—'}</span>
@@ -4762,6 +5090,61 @@ function renderNotasCriteriosLista() {
     `;
   }).join('');
   actualizarNotaFinalDisplay();
+}
+
+// Navegación con teclado dentro del modal de notas por criterios
+// (especialmente útil con el modo carga rápida, pero también funciona sin él)
+function navegarCriterios(e, idxActual) {
+  const inputs = document.querySelectorAll('#notas-criterios-lista input[data-criterio]');
+  if (inputs.length === 0) return;
+
+  const k = e.key;
+  // ↓ / Enter / Tab → siguiente
+  if (k === 'ArrowDown' || k === 'Enter' || (k === 'Tab' && !e.shiftKey)) {
+    e.preventDefault();
+    const siguiente = idxActual + 1;
+    if (siguiente < inputs.length) {
+      inputs[siguiente].focus();
+      inputs[siguiente].select();
+    } else {
+      // Era el último: si veníamos de modo carga, guardar y volver
+      if (modoCargaNotas.activo) {
+        guardarNotasCriterios();
+        // Avanzar al siguiente alumno
+        const ctx = obtenerCeldaCargaNotas();
+        if (ctx && modoCargaNotas.alumnoIdx < ctx.ordenados.length - 1) {
+          modoCargaNotas.alumnoIdx++;
+        }
+        setTimeout(() => actualizarFocoCargaNotas(), 30);
+      } else {
+        // En modo normal: que pase al botón Guardar
+        inputs[idxActual].blur();
+      }
+    }
+    return;
+  }
+  // ↑ / Shift+Tab → anterior
+  if (k === 'ArrowUp' || (k === 'Tab' && e.shiftKey)) {
+    e.preventDefault();
+    const anterior = idxActual - 1;
+    if (anterior >= 0) {
+      inputs[anterior].focus();
+      inputs[anterior].select();
+    }
+    return;
+  }
+  // Esc: si veníamos del modo carga, guardar y cerrar modal (vuelve a la grilla)
+  if (k === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    if (modoCargaNotas.activo) {
+      guardarNotasCriterios();
+      // El foco se restaura en la grilla con renderMain → actualizarFocoCargaNotas
+    } else {
+      cerrarModales();
+    }
+    return;
+  }
 }
 
 function onCriterioInput(criterioId, valor) {
@@ -4811,9 +5194,7 @@ function actualizarNotaFinalDisplay() {
     const final = sumaPond / sumaPesos;
     const cat = categoriaDeNota(final);
     display.innerHTML = `${final.toFixed(2)} <span style="font-size:0.8rem; opacity:0.7;">(${cat?.label || '—'})</span>`;
-    display.style.color = cat
-      ? `var(--${cat.clase === 'Regular' ? 'bad' : cat.clase === 'Bien' ? 'warn' : cat.clase === 'MuyBien' ? 'info' : 'ok'})`
-      : 'var(--texto)';
+    display.style.color = colorDeCategoria(cat);
   }
 }
 
@@ -5269,12 +5650,18 @@ function abrirCompositorMail(destinatario, asunto, cuerpo, clienteOverride) {
           '&body=' + encodeURIComponent(cuerpo);
     window.open(url, '_blank', 'noopener');
   } else {
-    // mailto: usa el cliente predeterminado del sistema.
-    // Usamos un link temporal con target=_blank para no perder el estado de la app
-    // si el usuario está en medio de algo.
+    // Cliente predeterminado del sistema vía mailto:
+    // NOTA: el protocolo mailto: depende de que el sistema operativo tenga
+    // asignado un programa para manejarlo. En Windows, si nunca configuraste
+    // un cliente de mail por defecto, NO PASA NADA al activar el link.
+    // Usamos location.href (más compatible que <a>.click()) y avisamos al usuario
+    // con un toast tras un timeout corto: si la página sigue visible, probablemente
+    // no se abrió nada y debe configurar un cliente o cambiar al modo Gmail/Outlook.
     url = 'mailto:' + encodeURIComponent(destinatario) +
           '?subject=' + encodeURIComponent(asunto) +
           '&body=' + encodeURIComponent(cuerpo);
+    // window.location.href = url no siempre dispara el handler externo en algunos navegadores.
+    // En cambio, simular un click sobre un <a> visible con target=_self es lo más confiable.
     const link = document.createElement('a');
     link.href = url;
     link.rel = 'noopener';
@@ -5282,6 +5669,17 @@ function abrirCompositorMail(destinatario, asunto, cuerpo, clienteOverride) {
     document.body.appendChild(link);
     link.click();
     setTimeout(() => link.remove(), 100);
+
+    // Aviso de fallback: si no se abrió nada (página sigue visible 1.5s después),
+    // probablemente el sistema no tiene cliente de mail asignado.
+    const tInicio = Date.now();
+    setTimeout(() => {
+      // Si el documento sigue visible y nada cambió, mostramos el toast.
+      // (No es 100% confiable porque depende del browser, pero es mejor que nada.)
+      if (document.visibilityState === 'visible' && Date.now() - tInicio < 2500) {
+        toast('Si no se abrió tu cliente de mail, asignalo en la configuración de Windows/Mac o elegí Gmail/Outlook en "Cliente de mail".');
+      }
+    }, 1500);
   }
 }
 
@@ -6669,6 +7067,102 @@ window.addEventListener('scroll', () => {
   if (window.scrollY > 400) btn.classList.add('visible');
   else btn.classList.remove('visible');
 }, { passive: true });
+
+// =========================================================
+// Scrollbar horizontal flotante (espeja el scroll de la tabla)
+// =========================================================
+// Cuando la tabla tiene scroll horizontal y todavía no se ve su scrollbar nativo
+// (porque queda al fondo de una tabla larga), mostramos una scrollbar flotante
+// pegada al borde inferior del viewport. Al moverla, espeja el scrollLeft de la
+// tabla y viceversa.
+(function setupScrollbarFlotante() {
+  const bar = document.getElementById('scrollbar-flotante');
+  if (!bar) return;
+  const interno = bar.querySelector('.interno');
+  let tabla = null;
+  let sincronizando = false; // evita loops bidireccionales
+
+  function getTablaWrap() {
+    return document.querySelector('.tabla-wrap');
+  }
+
+  function actualizar() {
+    tabla = getTablaWrap();
+    if (!tabla) { bar.classList.remove('visible'); return; }
+
+    // ¿La tabla tiene scroll horizontal real?
+    const tieneScroll = tabla.scrollWidth - tabla.clientWidth > 1;
+    if (!tieneScroll) { bar.classList.remove('visible'); return; }
+
+    // ¿La tabla está visible en el viewport?
+    const r = tabla.getBoundingClientRect();
+    const enViewport = r.top < window.innerHeight && r.bottom > 0;
+    if (!enViewport) { bar.classList.remove('visible'); return; }
+
+    // ¿El scrollbar nativo de la tabla ya está visible al final de la pantalla?
+    // El scrollbar nativo está en r.bottom. Si r.bottom <= window.innerHeight - 20,
+    // ya se ve el scrollbar de la tabla y el flotante es redundante.
+    const scrollNativoVisible = r.bottom <= window.innerHeight - 4;
+    if (scrollNativoVisible) { bar.classList.remove('visible'); return; }
+
+    // Ajustar el ancho del contenido interno para que matchee el scrollWidth de la tabla
+    interno.style.width = tabla.scrollWidth + 'px';
+    // Posicionar el scrollbar exactamente sobre la tabla (mismo left/width)
+    bar.style.left = r.left + 'px';
+    bar.style.right = 'auto';
+    bar.style.width = r.width + 'px';
+    bar.classList.add('visible');
+
+    // Sincronizar la posición del scroll (tabla → flotante)
+    if (!sincronizando) {
+      sincronizando = true;
+      bar.scrollLeft = tabla.scrollLeft;
+      // Liberamos en el próximo frame para no bloquear el otro listener
+      requestAnimationFrame(() => { sincronizando = false; });
+    }
+  }
+
+  // Cuando el usuario mueve el scrollbar flotante, mover la tabla
+  bar.addEventListener('scroll', () => {
+    if (sincronizando) return;
+    tabla = getTablaWrap();
+    if (!tabla) return;
+    sincronizando = true;
+    tabla.scrollLeft = bar.scrollLeft;
+    requestAnimationFrame(() => { sincronizando = false; });
+  });
+
+  // Cuando la tabla scrollea horizontalmente, mover el flotante
+  // (delegación: lo registramos cada vez que se rerenderiza el DOM via observer)
+  function adjuntarTablaListener() {
+    const t = getTablaWrap();
+    if (!t || t._scrollbarFlotanteListenerAdjunto) return;
+    t._scrollbarFlotanteListenerAdjunto = true;
+    t.addEventListener('scroll', () => {
+      if (sincronizando) return;
+      sincronizando = true;
+      bar.scrollLeft = t.scrollLeft;
+      requestAnimationFrame(() => { sincronizando = false; });
+    }, { passive: true });
+  }
+
+  // Actualizar visibilidad ante eventos relevantes
+  window.addEventListener('scroll', actualizar, { passive: true });
+  window.addEventListener('resize', actualizar);
+
+  // Observamos cambios en el DOM del main para detectar cuando re-render reemplaza .tabla-wrap
+  const mainEl = document.getElementById('main');
+  if (mainEl) {
+    const obs = new MutationObserver(() => {
+      adjuntarTablaListener();
+      actualizar();
+    });
+    obs.observe(mainEl, { childList: true, subtree: true });
+  }
+
+  // Primer pintado
+  setTimeout(() => { adjuntarTablaListener(); actualizar(); }, 200);
+})();
 
 // Tooltip flotante para celdas de nota.
 // Usa delegación de eventos: un solo listener en document.body atiende a cualquier celda
